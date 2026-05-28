@@ -4,17 +4,34 @@
  */
 package foxsfortune;
 
+import javax.swing.JFrame;
+
 /**
+ * Main application frame for Fox's Fortune game.
  *
- * @author LoSay5485
+ * @author reesesanders
  */
-public class FoxsFortune {
+public class FoxsFortune extends JFrame {
+
+    private GamePanel gamePanel;
+
+    public FoxsFortune() {
+        setTitle("Fox's Fortune");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        setLocationRelativeTo(null);
+
+        gamePanel = new GamePanel();
+        add(gamePanel);
+
+        setSize(800, 600);
+        setVisible(true);
+    }
 
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
-        // TODO code application logic here
+        new FoxsFortune();
     }
-    
 }
