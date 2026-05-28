@@ -24,7 +24,7 @@ public class FoxsFortune extends JFrame {
         gamePanel = new GamePanel();
         add(gamePanel);
 
-        setSize(800, 600);
+        setSize(1000, 900);
         setVisible(true);
     }
 

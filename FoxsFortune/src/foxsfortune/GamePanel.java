@@ -23,8 +23,7 @@ public class GamePanel extends JPanel {
         Graphics2D g2d = (Graphics2D) g;
 
         // Render game elements here
-        g2d.setColor(Color.WHITE);
-        g2d.drawString("Fox's Fortune - Game Panel", 50, 50);
+        
     }
 
     @Override
