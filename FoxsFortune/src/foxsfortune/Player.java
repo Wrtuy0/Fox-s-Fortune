@@ -22,10 +22,12 @@ package foxsfortune;
 public class Player extends Entity {
 
     private String button;
+    private double yVelocity;
 
     public Player() {
         super();
         this.button = "";
+        this.yVelocity = 0;
     }
 
     public void isButtonClick(String button) {
@@ -33,10 +35,19 @@ public class Player extends Entity {
         System.out.println("Button clicked: " + button);
     }
 
+    public double getYVelocity() {
+        return yVelocity;
+    }
+
+    public void setYVelocity(double yVelocity) {
+        this.yVelocity = yVelocity;
+    }
+
     @Override
     public String toString() {
         return "Player{" +
                 "button='" + button + '\'' +
+                ", yVelocity=" + yVelocity +
                 '}';
     }
 }

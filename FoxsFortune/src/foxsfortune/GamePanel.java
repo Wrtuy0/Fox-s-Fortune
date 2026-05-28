@@ -20,8 +20,12 @@ public class GamePanel extends JPanel implements KeyListener {
     private Set<Integer> keysPressed;
     private final int PLAYER_SPEED = 5;
     private final int PLAYER_SIZE = 30;
+    private final double GRAVITY = 0.6;
+    private final double JUMP_FORCE = -15.0;
+    private final int GROUND_LEVEL = 850; // Near bottom of 900px window
     private Thread gameThread;
     private boolean running;
+    private boolean canJump = true;
 
     public GamePanel() {
         setBackground(Color.BLACK);
@@ -69,14 +73,9 @@ public class GamePanel extends JPanel implements KeyListener {
         // Handle player movement based on keys pressed
         int newX = player.getXPos();
         int newY = player.getYPos();
+        double yVelocity = player.getYVelocity();
         
-        // WASD or Arrow keys for movement
-        if (keysPressed.contains(KeyEvent.VK_W) || keysPressed.contains(KeyEvent.VK_UP)) {
-            newY -= PLAYER_SPEED;
-        }
-        if (keysPressed.contains(KeyEvent.VK_S) || keysPressed.contains(KeyEvent.VK_DOWN)) {
-            newY += PLAYER_SPEED;
-        }
+        // Left/Right movement only
         if (keysPressed.contains(KeyEvent.VK_A) || keysPressed.contains(KeyEvent.VK_LEFT)) {
             newX -= PLAYER_SPEED;
         }
@@ -84,12 +83,34 @@ public class GamePanel extends JPanel implements KeyListener {
             newX += PLAYER_SPEED;
         }
         
-        // Bounds checking
+        // Handle jumping with W key
+        if (keysPressed.contains(KeyEvent.VK_UP) || keysPressed.contains(KeyEvent.VK_W) && canJump) {
+            yVelocity = JUMP_FORCE;
+            canJump = false;
+        }
+        
+        // Apply gravity
+        yVelocity += GRAVITY;
+        
+        // Apply vertical velocity
+        newY += (int) yVelocity;
+        
+        // Ground collision
+        if (newY >= GROUND_LEVEL) {
+            newY = GROUND_LEVEL;
+            yVelocity = 0;
+            canJump = true;
+        }
+        
+        // Bounds checking (horizontal)
         newX = Math.max(0, Math.min(newX, getWidth() - PLAYER_SIZE));
-        newY = Math.max(0, Math.min(newY, getHeight() - PLAYER_SIZE));
+        
+        // Prevent going above screen
+        newY = Math.max(0, newY);
         
         player.setXPos(newX);
         player.setYPos(newY);
+        player.setYVelocity(yVelocity);
         
         // Update moving state
         player.setMoving(!keysPressed.isEmpty());
