@@ -16,18 +16,18 @@ import java.util.Set;
  */
 public class GamePanel extends JPanel implements KeyListener {
 
-    private Player player;
-    private Set<Integer> keysPressed;
-    private final int PLAYER_SPEED = 5;
-    private final int PLAYER_SIZE = 30;
-    private final double GRAVITY = 0.6;
-    private final double JUMP_FORCE = -15.0;
+    private Player player; // player attrubute
+    private Set<Integer> keysPressed; // attrubuite to hold what was pressed
+    private final int PLAYER_SPEED = 5; // player base speed attrubute
+    private final int PLAYER_SIZE = 30; // player pixel form size attrubute
+    private final double GRAVITY = 0.6; // a gravity attrubute to keep the player from jumping to space forever
+    private final double JUMP_FORCE = -15.0; // player base jump power  attrubute
     private final int GROUND_LEVEL = 850; // Near bottom of 900px window
     private Thread gameThread;
     private boolean running;
-    private boolean canJump = true;
+    private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
 
-    public GamePanel() {
+    public GamePanel() {//constructor 
         setBackground(Color.BLACK);
         setFocusable(true);
         addKeyListener(this);
