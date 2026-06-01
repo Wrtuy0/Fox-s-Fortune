@@ -1,13 +1,15 @@
 package foxsfortune;
 
-import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.event.KeyListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import javax.swing.JPanel;
 
 /**
  * Game panel for rendering and managing game logic.
@@ -23,6 +25,7 @@ public class GamePanel extends JPanel implements KeyListener {
     private final double GRAVITY = 0.6; // a gravity attrubute to keep the player from jumping to space forever
     private final double JUMP_FORCE = -15.0; // player base jump power  attrubute
     private final int GROUND_LEVEL = 850; // Near bottom of 900px window and the y position where the player should stop falling
+    private final List<Platform> platforms = new ArrayList<>(); // platform list for collision and rendering
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
@@ -48,6 +51,11 @@ public class GamePanel extends JPanel implements KeyListener {
          // creates the set that stores pressed keys
         running = true;
         // makes the game loop allowed to run
+
+        // Add platforms. Place them by calling addPlatform(x, y, width, height).
+        addPlatform(200, 750, 200, 20);
+        addPlatform(450, 620, 150, 20);
+        addPlatform(100, 520, 100, 20);
 
         // Start game loop
         startGameLoop();
@@ -113,7 +121,7 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         // Handle jumping with W key
-        if (keysPressed.contains(KeyEvent.VK_UP) || keysPressed.contains(KeyEvent.VK_W) && canJump) {
+        if ((keysPressed.contains(KeyEvent.VK_UP) || keysPressed.contains(KeyEvent.VK_W)) && canJump) {
             // if up or W is pressed and jumping is allowed the player jumps
             yVelocity = JUMP_FORCE;
             // gives the player upward movement
@@ -125,10 +133,27 @@ public class GamePanel extends JPanel implements KeyListener {
         yVelocity += GRAVITY;
         // gravity pulls the player down by increasing y velocity
         // Apply vertical velocity
+        int previousBottom = player.getYPos() + PLAYER_SIZE;
         newY += (int) yVelocity;
-        // adds the y velocity to the y position
+        int newBottom = newY + PLAYER_SIZE;
+
+        // Platform collision
+        boolean landedOnPlatform = false;
+        if (yVelocity >= 0) {
+            for (Platform platform : platforms) {
+                boolean horizontalOverlap = newX + PLAYER_SIZE > platform.x && newX < platform.x + platform.width;
+                if (horizontalOverlap && previousBottom <= platform.y && newBottom >= platform.y) {
+                    newY = platform.y - PLAYER_SIZE;
+                    yVelocity = 0;
+                    canJump = true;
+                    landedOnPlatform = true;
+                    break;
+                }
+            }
+        }
+
         // Ground collision
-        if (newY >= GROUND_LEVEL) {
+        if (!landedOnPlatform && newY >= GROUND_LEVEL) {
             // if the player reaches the ground level, stop falling
             newY = GROUND_LEVEL;
             // locks the player on the ground
@@ -166,6 +191,13 @@ public class GamePanel extends JPanel implements KeyListener {
         Graphics2D g2d = (Graphics2D) g;
         // changes Graphics into Graphics2D so drawing is easier
 
+        // Render platforms
+        g2d.setColor(Color.GRAY);
+        for (Platform platform : platforms) {
+            g2d.fillRect(platform.x, platform.y, platform.width, platform.height);
+        }
+        // draws simple platforms for the player to land on
+
         // Render player
         if (player != null) {
             // only draw the player if the player exists
@@ -180,6 +212,10 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.drawString(player.getName(), player.getXPos(), player.getYPos() - 5);
             // draws the player's name above the square
         }
+    }
+
+    private void addPlatform(int x, int y, int width, int height) {
+        platforms.add(new Platform(x, y, width, height));
     }
 
     @Override
@@ -200,5 +236,19 @@ public class GamePanel extends JPanel implements KeyListener {
     public void keyTyped(KeyEvent e) {
         // Not needed for movement
         // this is empty because movement uses keyPressed and keyReleased instead
+    }
+
+    private static class Platform {
+        final int x;
+        final int y;
+        final int width;
+        final int height;
+
+        Platform(int x, int y, int width, int height) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+        }
     }
 }
