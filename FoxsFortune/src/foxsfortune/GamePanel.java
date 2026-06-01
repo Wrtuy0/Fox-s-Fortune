@@ -22,10 +22,16 @@ public class GamePanel extends JPanel implements KeyListener {
     private Set<Integer> keysPressed; // attrubuite to hold what was pressed set that stores all the keys currently being held down
     private final int PLAYER_SPEED = 5; // player base speed attrubute
     private final int PLAYER_SIZE = 30; // player pixel form size attrubute
+    private final int COLLECTIBLE_SIZE = 20; // collectible size in pixels
     private final double GRAVITY = 0.6; // a gravity attrubute to keep the player from jumping to space forever
     private final double JUMP_FORCE = -15.0; // player base jump power  attrubute
     private final int GROUND_LEVEL = 850; // Near bottom of 900px window and the y position where the player should stop falling
     private final List<Platform> platforms = new ArrayList<>(); // platform list for collision and rendering
+    private final List<Collectible> collectibles = new ArrayList<>(); // collectible list for collection and rendering
+    private int collectedCount = 0; // how many collectibles the player has picked up
+    private boolean doubleJumpEnabled = false; // whether player can perform a second jump in the air
+    private boolean hasDoubleJumped = false; // whether the player has already used the second jump
+    private boolean jumpKeyPreviouslyPressed = false; // used to detect jump key presses instead of holds
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
@@ -55,7 +61,12 @@ public class GamePanel extends JPanel implements KeyListener {
         // Add platforms. Place them by calling addPlatform(x, y, width, height).
         addPlatform(200, 750, 200, 20);
         addPlatform(450, 620, 150, 20);
-        addPlatform(100, 520, 100, 20);
+        addPlatform(150, 620, 100, 20);
+
+        addCollectible(260, 700, 1);
+        addCollectible(520, 560, 2);
+        addCollectible(130, 580, 3);
+        addDoubleJumpItem(700, 700);
 
         // Start game loop
         startGameLoop();
@@ -120,35 +131,95 @@ public class GamePanel extends JPanel implements KeyListener {
             newX += PLAYER_SPEED;
         }
 
-        // Handle jumping with W key
-        if ((keysPressed.contains(KeyEvent.VK_UP) || keysPressed.contains(KeyEvent.VK_W)) && canJump) {
-            // if up or W is pressed and jumping is allowed the player jumps
-            yVelocity = JUMP_FORCE;
-            // gives the player upward movement
-            canJump = false;
-            // stops the player from jumping again in the air
+        // Handle jumping with W/up key press
+        boolean jumpPressed = keysPressed.contains(KeyEvent.VK_UP) || keysPressed.contains(KeyEvent.VK_W);
+        if (jumpPressed && !jumpKeyPreviouslyPressed) {
+            if (canJump) {
+                yVelocity = JUMP_FORCE;
+                canJump = false;
+                hasDoubleJumped = false;
+            } else if (doubleJumpEnabled && !hasDoubleJumped) {
+                yVelocity = JUMP_FORCE;
+                hasDoubleJumped = true;
+            }
         }
+        jumpKeyPreviouslyPressed = jumpPressed;
 
         // Apply gravity
         yVelocity += GRAVITY;
         // gravity pulls the player down by increasing y velocity
         // Apply vertical velocity
-        int previousBottom = player.getYPos() + PLAYER_SIZE;
+        int previousTop = player.getYPos();
+        int previousLeft = player.getXPos();
+        int previousRight = previousLeft + PLAYER_SIZE;
+        int previousBottom = previousTop + PLAYER_SIZE;
         newY += (int) yVelocity;
+        int newTop = newY;
+        int newLeft = newX;
+        int newRight = newX + PLAYER_SIZE;
         int newBottom = newY + PLAYER_SIZE;
 
         // Platform collision
         boolean landedOnPlatform = false;
-        if (yVelocity >= 0) {
-            for (Platform platform : platforms) {
-                boolean horizontalOverlap = newX + PLAYER_SIZE > platform.x && newX < platform.x + platform.width;
-                if (horizontalOverlap && previousBottom <= platform.y && newBottom >= platform.y) {
-                    newY = platform.y - PLAYER_SIZE;
-                    yVelocity = 0;
-                    canJump = true;
-                    landedOnPlatform = true;
-                    break;
+        for (Platform platform : platforms) {
+            boolean intersects = newRight > platform.x && newLeft < platform.x + platform.width && newBottom > platform.y && newTop < platform.y + platform.height;
+            if (!intersects) {
+                continue;
+            }
+
+            int overlapLeft = newRight - platform.x;
+            int overlapRight = platform.x + platform.width - newLeft;
+            int overlapTop = newBottom - platform.y;
+            int overlapBottom = platform.y + platform.height - newTop;
+            int minOverlap = Math.min(Math.min(overlapTop, overlapBottom), Math.min(overlapLeft, overlapRight));
+
+            if (minOverlap == overlapTop && previousBottom <= platform.y) {
+                // landed on top of platform
+                newY = platform.y - PLAYER_SIZE;
+                yVelocity = 0;
+                canJump = true;
+                hasDoubleJumped = false;
+                landedOnPlatform = true;
+            } else if (minOverlap == overlapBottom && previousTop >= platform.y + platform.height) {
+                // hit the platform from below
+                newY = platform.y + platform.height;
+                yVelocity = 0;
+            } else if (minOverlap == overlapLeft && previousRight <= platform.x) {
+                // hit the platform from the left side
+                newX = platform.x - PLAYER_SIZE;
+            } else if (minOverlap == overlapRight && previousLeft >= platform.x + platform.width) {
+                // hit the platform from the right side
+                newX = platform.x + platform.width;
+            } else if (overlapTop <= overlapLeft && overlapTop <= overlapRight) {
+                newY = platform.y - PLAYER_SIZE;
+                yVelocity = 0;
+                canJump = true;
+                landedOnPlatform = true;
+            } else if (overlapLeft < overlapRight) {
+                newX = platform.x - PLAYER_SIZE;
+            } else {
+                newX = platform.x + platform.width;
+            }
+
+            newLeft = newX;
+            newRight = newX + PLAYER_SIZE;
+            newTop = newY;
+            newBottom = newY + PLAYER_SIZE;
+        }
+
+        // Collectible pickup
+        for (int i = collectibles.size() - 1; i >= 0; i--) {
+            Collectible collectible = collectibles.get(i);
+            int collX = collectible.getXPos();
+            int collY = collectible.getYPos();
+            boolean overlapX = newX < collX + COLLECTIBLE_SIZE && newX + PLAYER_SIZE > collX;
+            boolean overlapY = newY < collY + COLLECTIBLE_SIZE && newY + PLAYER_SIZE > collY;
+            if (overlapX && overlapY) {
+                if ("Double Jump Item".equals(collectible.getName())) {
+                    doubleJumpEnabled = true;
                 }
+                collectedCount++;
+                collectibles.remove(i);
             }
         }
 
@@ -160,6 +231,7 @@ public class GamePanel extends JPanel implements KeyListener {
             yVelocity = 0;
             // removes downward speed
             canJump = true;
+            hasDoubleJumped = false;
             // allows jumping again because the player is on ground
         }
 
@@ -198,6 +270,17 @@ public class GamePanel extends JPanel implements KeyListener {
         }
         // draws simple platforms for the player to land on
 
+        // Render collectibles
+        for (Collectible collectible : collectibles) {
+            if ("Double Jump Item".equals(collectible.getName())) {
+                g2d.setColor(Color.CYAN);
+            } else {
+                g2d.setColor(Color.YELLOW);
+            }
+            g2d.fillOval(collectible.getXPos(), collectible.getYPos(), COLLECTIBLE_SIZE, COLLECTIBLE_SIZE);
+        }
+        // draws collectibles the player can pick up
+
         // Render player
         if (player != null) {
             // only draw the player if the player exists
@@ -212,10 +295,31 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.drawString(player.getName(), player.getXPos(), player.getYPos() - 5);
             // draws the player's name above the square
         }
+
+        // Draw score
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("Collectibles: " + collectedCount, 10, 20);
+
     }
 
     private void addPlatform(int x, int y, int width, int height) {
         platforms.add(new Platform(x, y, width, height));
+    }
+
+    private void addCollectible(int x, int y, int collectibleNum) {
+        Collectible collectible = new Collectible(collectibleNum);
+        collectible.setXPos(x);
+        collectible.setYPos(y);
+        collectible.setName("Collectible " + collectibleNum);
+        collectibles.add(collectible);
+    }
+
+    private void addDoubleJumpItem(int x, int y) {
+        Collectible collectible = new Collectible(0);
+        collectible.setXPos(x);
+        collectible.setYPos(y);
+        collectible.setName("Double Jump Item");
+        collectibles.add(collectible);
     }
 
     @Override
