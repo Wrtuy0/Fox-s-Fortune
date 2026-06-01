@@ -14,7 +14,7 @@ import javax.swing.JPanel;
 /**
  * Game panel for rendering and managing game logic.
  *
- * @author reesesanders
+ * @author Reese Sanders, Logan Saywich and Aws Tariq
  */
 public class GamePanel extends JPanel implements KeyListener {
 
@@ -32,6 +32,7 @@ public class GamePanel extends JPanel implements KeyListener {
     private boolean doubleJumpEnabled = false; // whether player can perform a second jump in the air
     private boolean hasDoubleJumped = false; // whether the player has already used the second jump
     private boolean jumpKeyPreviouslyPressed = false; // used to detect jump key presses instead of holds
+    private double xVelocity = 0; // horizontal movement speed
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
@@ -121,14 +122,37 @@ public class GamePanel extends JPanel implements KeyListener {
         double yVelocity = player.getYVelocity();
         // stores the player's current vertical speed
 
-        // Left/Right movement only
-        if (keysPressed.contains(KeyEvent.VK_A) || keysPressed.contains(KeyEvent.VK_LEFT)) {
-            // if A or left arrow is pressed the player moves left
-            newX -= PLAYER_SPEED;
+        // Horizontal movement velocity
+        boolean leftPressed = keysPressed.contains(KeyEvent.VK_A) || keysPressed.contains(KeyEvent.VK_LEFT);
+        boolean rightPressed = keysPressed.contains(KeyEvent.VK_D) || keysPressed.contains(KeyEvent.VK_RIGHT);
+        if (leftPressed && !rightPressed) {
+            xVelocity = -PLAYER_SPEED;
+        } else if (rightPressed && !leftPressed) {
+            xVelocity = PLAYER_SPEED;
+        } else {
+            xVelocity = 0;
         }
-        if (keysPressed.contains(KeyEvent.VK_D) || keysPressed.contains(KeyEvent.VK_RIGHT)) {
-            // if D or right arrow is pressed the player moves right
-            newX += PLAYER_SPEED;
+
+        int previousTop = player.getYPos();
+        int previousBottom = previousTop + PLAYER_SIZE;
+        int previousLeft = player.getXPos();
+        int previousRight = previousLeft + PLAYER_SIZE;
+
+        // Apply horizontal movement first
+        newX += (int) xVelocity;
+        for (Platform platform : platforms) {
+            boolean verticalOverlap = previousBottom > platform.y && previousTop < platform.y + platform.height;
+            if (!verticalOverlap) {
+                continue;
+            }
+
+            if (xVelocity > 0 && previousRight <= platform.x && newX + PLAYER_SIZE > platform.x) {
+                newX = platform.x - PLAYER_SIZE;
+                xVelocity = 0;
+            } else if (xVelocity < 0 && previousLeft >= platform.x + platform.width && newX < platform.x + platform.width) {
+                newX = platform.x + platform.width;
+                xVelocity = 0;
+            }
         }
 
         // Handle jumping with W/up key press
@@ -148,11 +172,6 @@ public class GamePanel extends JPanel implements KeyListener {
         // Apply gravity
         yVelocity += GRAVITY;
         // gravity pulls the player down by increasing y velocity
-        // Apply vertical velocity
-        int previousTop = player.getYPos();
-        int previousLeft = player.getXPos();
-        int previousRight = previousLeft + PLAYER_SIZE;
-        int previousBottom = previousTop + PLAYER_SIZE;
         newY += (int) yVelocity;
         int newTop = newY;
         int newLeft = newX;
@@ -162,47 +181,22 @@ public class GamePanel extends JPanel implements KeyListener {
         // Platform collision
         boolean landedOnPlatform = false;
         for (Platform platform : platforms) {
-            boolean intersects = newRight > platform.x && newLeft < platform.x + platform.width && newBottom > platform.y && newTop < platform.y + platform.height;
-            if (!intersects) {
+            boolean horizontalOverlap = newRight > platform.x && newLeft < platform.x + platform.width;
+            if (!horizontalOverlap) {
                 continue;
             }
 
-            int overlapLeft = newRight - platform.x;
-            int overlapRight = platform.x + platform.width - newLeft;
-            int overlapTop = newBottom - platform.y;
-            int overlapBottom = platform.y + platform.height - newTop;
-            int minOverlap = Math.min(Math.min(overlapTop, overlapBottom), Math.min(overlapLeft, overlapRight));
-
-            if (minOverlap == overlapTop && previousBottom <= platform.y) {
-                // landed on top of platform
+            if (yVelocity > 0 && previousBottom <= platform.y && newBottom > platform.y) {
                 newY = platform.y - PLAYER_SIZE;
                 yVelocity = 0;
                 canJump = true;
                 hasDoubleJumped = false;
                 landedOnPlatform = true;
-            } else if (minOverlap == overlapBottom && previousTop >= platform.y + platform.height) {
-                // hit the platform from below
+            } else if (yVelocity < 0 && previousTop >= platform.y + platform.height && newTop < platform.y + platform.height) {
                 newY = platform.y + platform.height;
                 yVelocity = 0;
-            } else if (minOverlap == overlapLeft && previousRight <= platform.x) {
-                // hit the platform from the left side
-                newX = platform.x - PLAYER_SIZE;
-            } else if (minOverlap == overlapRight && previousLeft >= platform.x + platform.width) {
-                // hit the platform from the right side
-                newX = platform.x + platform.width;
-            } else if (overlapTop <= overlapLeft && overlapTop <= overlapRight) {
-                newY = platform.y - PLAYER_SIZE;
-                yVelocity = 0;
-                canJump = true;
-                landedOnPlatform = true;
-            } else if (overlapLeft < overlapRight) {
-                newX = platform.x - PLAYER_SIZE;
-            } else {
-                newX = platform.x + platform.width;
             }
 
-            newLeft = newX;
-            newRight = newX + PLAYER_SIZE;
             newTop = newY;
             newBottom = newY + PLAYER_SIZE;
         }
