@@ -5,6 +5,12 @@
 package foxsfortune;
 
 /**
+ * Represents a player ability item which can be bound to a control button.
+ * An ability is collectable in the world and stores which button activates it
+ * along with whether the player has already collected it.
+ *
+ * Extends `Item` so it inherits position and interactable state.
+ *
  * @author reesesanders
  */
 public class Ability extends Item {
