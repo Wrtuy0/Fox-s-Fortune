@@ -46,6 +46,15 @@ public class GamePanel extends JPanel implements KeyListener {
     private boolean hasDoubleJumped = false; // whether the player has already used the second jump
     private boolean jumpKeyPreviouslyPressed = false; // used to detect jump key presses instead of holds
     private double xVelocity = 0; // horizontal movement speed
+    private boolean facingRight = true; // which way the player faces
+    // Attack state
+    private boolean attackActive = false;
+    private int attackTimer = 0;
+    private final int ATTACK_DURATION = 6; // frames the attack is active
+    private int attackCooldown = 0;
+    private final int ATTACK_COOLDOWN = 20; // frames between attacks
+    private final int ATTACK_RANGE = 40; // pixels
+    private final int ATTACK_DAMAGE = 1;
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
@@ -157,6 +166,9 @@ public class GamePanel extends JPanel implements KeyListener {
         } else {
             xVelocity = 0;
         }
+        // update facing based on horizontal input
+        if (xVelocity > 0) facingRight = true;
+        else if (xVelocity < 0) facingRight = false;
 
         int previousTop = player.getYPos();
         int previousBottom = previousTop + PLAYER_SIZE;
@@ -197,6 +209,7 @@ public class GamePanel extends JPanel implements KeyListener {
         if (!isAlive) {
             return;
         }
+
 
         // Apply gravity
         yVelocity += GRAVITY;
@@ -255,6 +268,40 @@ public class GamePanel extends JPanel implements KeyListener {
                 yVelocity = JUMP_FORCE / 2;
                 // give short invulnerability after knockback
                 respawnProtection = 30;
+            }
+        }
+
+        // Handle attack timers and collisions
+        if (attackCooldown > 0) attackCooldown--;
+        if (attackActive) {
+            attackTimer--;
+            // compute attack hitbox
+            int attackX;
+            if (facingRight) {
+                attackX = newX + PLAYER_SIZE;
+            } else {
+                attackX = newX - ATTACK_RANGE;
+            }
+            int attackY = newY;
+            int attackW = ATTACK_RANGE;
+            int attackH = PLAYER_SIZE;
+
+            // check enemies for hit
+            for (int i = enemies.size() - 1; i >= 0; i--) {
+                EnemyEntity enemy = enemies.get(i);
+                boolean overlapX = attackX < enemy.x + enemy.width && attackX + attackW > enemy.x;
+                boolean overlapY = attackY < enemy.y + enemy.height && attackY + attackH > enemy.y;
+                if (overlapX && overlapY) {
+                    int newHealth = enemy.getHealth() - ATTACK_DAMAGE;
+                    enemy.setHealth(newHealth);
+                    if (newHealth <= 0) {
+                        enemies.remove(i);
+                    }
+                }
+            }
+
+            if (attackTimer <= 0) {
+                attackActive = false;
             }
         }
 
@@ -370,6 +417,13 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
         }
         // draws simple patrolling enemies
+
+        // Render attack hitbox if active
+        if (attackActive) {
+            g2d.setColor(Color.WHITE);
+            int drawX = facingRight ? player.getXPos() + PLAYER_SIZE : player.getXPos() - ATTACK_RANGE;
+            g2d.fillRect(drawX, player.getYPos(), ATTACK_RANGE, PLAYER_SIZE);
+        }
 
         // Render player
         if (player != null) {
@@ -526,6 +580,14 @@ public class GamePanel extends JPanel implements KeyListener {
         // runs when a key is pressed
         keysPressed.add(e.getKeyCode());
         // adds the key code into the set of pressed keys
+        // Attack on 'C' key
+        if (e.getKeyCode() == KeyEvent.VK_C) {
+            if (!attackActive && attackCooldown <= 0 && isAlive) {
+                attackActive = true;
+                attackTimer = ATTACK_DURATION;
+                attackCooldown = ATTACK_COOLDOWN;
+            }
+        }
     }
 
     @Override
