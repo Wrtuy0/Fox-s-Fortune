@@ -26,9 +26,21 @@ public class GamePanel extends JPanel implements KeyListener {
     private final double GRAVITY = 0.6; // a gravity attrubute to keep the player from jumping to space forever
     private final double JUMP_FORCE = -15.0; // player base jump power  attrubute
     private final int GROUND_LEVEL = 850; // Near bottom of 900px window and the y position where the player should stop falling
+    private int spawnX; // current player spawn x position
+    private int spawnY; // current player spawn y position
+    private int checkpointX; // current checkpoint x position
+    private int checkpointY; // current checkpoint y position
+    private boolean checkpointActive = false; // whether a checkpoint has been reached
     private final List<Platform> platforms = new ArrayList<>(); // platform list for collision and rendering
+    private final List<Checkpoint> checkpoints = new ArrayList<>(); // checkpoint list for respawn points
     private final List<Collectible> collectibles = new ArrayList<>(); // collectible list for collection and rendering
+    private final List<EnemyEntity> enemies = new ArrayList<>(); // basic enemies that patrol
+    private final int ENEMY_SIZE = 30; // enemy pixel size
+    private final int MAX_HEALTH = 5; // maximum player health
     private int collectedCount = 0; // how many collectibles the player has picked up
+    private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
+    private int hurtCooldown = 0; // prevents repeated damage in the same contact
+    private boolean isAlive = true; // whether the player is alive
     private boolean doubleJumpEnabled = false; // whether player can perform a second jump in the air
     private boolean hasDoubleJumped = false; // whether the player has already used the second jump
     private boolean jumpKeyPreviouslyPressed = false; // used to detect jump key presses instead of holds
@@ -45,15 +57,11 @@ public class GamePanel extends JPanel implements KeyListener {
         addKeyListener(this);
         // adds this class as the key listener
 
-        // Initialize player in center of screen
+        // Initialize player object
         player = new Player();
         // creates the player object
         player.setName("Fox");
         // gives the player a name
-        player.setXPos(getWidth() / 2);
-        // starts the player around the middle of the panel horizontally
-        player.setYPos(getHeight() / 2);
-        // starts the player around the middle of the panel vertically
         keysPressed = new HashSet<>();
          // creates the set that stores pressed keys
         running = true;
@@ -64,10 +72,20 @@ public class GamePanel extends JPanel implements KeyListener {
         addPlatform(450, 620, 150, 20);
         addPlatform(150, 620, 100, 20);
 
+        // Start position on the first platform by default
+        if (!platforms.isEmpty()) {
+            Platform startPlatform = platforms.get(0);
+            setPlayerSpawn(startPlatform.x + 10, startPlatform.y - PLAYER_SIZE);
+        } else {
+            setPlayerSpawn(getWidth() / 2, getHeight() / 2);
+        }
+
         addCollectible(260, 700, 1);
         addCollectible(520, 560, 2);
         addCollectible(130, 580, 3);
         addDoubleJumpItem(700, 700);
+        addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
+        addCheckpoint(520, 600, 20, 20);
 
         // Start game loop
         startGameLoop();
@@ -169,6 +187,10 @@ public class GamePanel extends JPanel implements KeyListener {
         }
         jumpKeyPreviouslyPressed = jumpPressed;
 
+        if (!isAlive) {
+            return;
+        }
+
         // Apply gravity
         yVelocity += GRAVITY;
         // gravity pulls the player down by increasing y velocity
@@ -201,6 +223,25 @@ public class GamePanel extends JPanel implements KeyListener {
             newBottom = newY + PLAYER_SIZE;
         }
 
+        // Enemy movement and simple collision
+        for (EnemyEntity enemy : enemies) {
+            enemy.x += enemy.dx;
+            if (enemy.x < enemy.patrolMinX || enemy.x + enemy.width > enemy.patrolMaxX) {
+                enemy.dx = -enemy.dx;
+                enemy.x += enemy.dx;
+            }
+
+            boolean overlapX = newX < enemy.x + enemy.width && newX + PLAYER_SIZE > enemy.x;
+            boolean overlapY = newY < enemy.y + enemy.height && newY + PLAYER_SIZE > enemy.y;
+            if (overlapX && overlapY && hurtCooldown <= 0) {
+                hurtPlayer(1);
+            }
+        }
+
+        if (hurtCooldown > 0) {
+            hurtCooldown--;
+        }
+
         // Collectible pickup
         for (int i = collectibles.size() - 1; i >= 0; i--) {
             Collectible collectible = collectibles.get(i);
@@ -214,6 +255,17 @@ public class GamePanel extends JPanel implements KeyListener {
                 }
                 collectedCount++;
                 collectibles.remove(i);
+            }
+        }
+
+        // Checkpoint activation
+        for (Checkpoint checkpoint : checkpoints) {
+            boolean overlapX = newX < checkpoint.x + checkpoint.width && newX + PLAYER_SIZE > checkpoint.x;
+            boolean overlapY = newY < checkpoint.y + checkpoint.height && newY + PLAYER_SIZE > checkpoint.y;
+            if (overlapX && overlapY) {
+                int respawnX = checkpoint.x - (PLAYER_SIZE - checkpoint.width) / 2;
+                int respawnY = checkpoint.y - PLAYER_SIZE;
+                setCheckpoint(respawnX, respawnY);
             }
         }
 
@@ -264,6 +316,13 @@ public class GamePanel extends JPanel implements KeyListener {
         }
         // draws simple platforms for the player to land on
 
+        // Render checkpoints
+        g2d.setColor(Color.GREEN);
+        for (Checkpoint checkpoint : checkpoints) {
+            g2d.fillRect(checkpoint.x, checkpoint.y, checkpoint.width, checkpoint.height);
+        }
+        // draws checkpoint markers that change the respawn location
+
         // Render collectibles
         for (Collectible collectible : collectibles) {
             if ("Double Jump Item".equals(collectible.getName())) {
@@ -274,6 +333,13 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.fillOval(collectible.getXPos(), collectible.getYPos(), COLLECTIBLE_SIZE, COLLECTIBLE_SIZE);
         }
         // draws collectibles the player can pick up
+
+        // Render enemies
+        g2d.setColor(Color.RED);
+        for (EnemyEntity enemy : enemies) {
+            g2d.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        }
+        // draws simple patrolling enemies
 
         // Render player
         if (player != null) {
@@ -290,9 +356,16 @@ public class GamePanel extends JPanel implements KeyListener {
             // draws the player's name above the square
         }
 
-        // Draw score
+        // Draw score and health
         g2d.setColor(Color.WHITE);
         g2d.drawString("Collectibles: " + collectedCount, 10, 20);
+        g2d.drawString("Health: " + playerHealth + " / " + MAX_HEALTH, 10, 40);
+
+        if (!isAlive) {
+            g2d.setColor(Color.RED);
+            g2d.drawString("Game Over", getWidth() / 2 - 40, getHeight() / 2);
+            g2d.drawString("Press R to respawn", getWidth() / 2 - 70, getHeight() / 2 + 20);
+        }
 
     }
 
@@ -316,8 +389,99 @@ public class GamePanel extends JPanel implements KeyListener {
         collectibles.add(collectible);
     }
 
+    private void addEnemy(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int dx) {
+        enemies.add(new EnemyEntity(x, y, width, height, patrolMinX, patrolMaxX, dx));
+    }
+
+    private void addCheckpoint(int x, int y, int width, int height) {
+        checkpoints.add(new Checkpoint(x, y, width, height));
+    }
+
+    public void setCheckpoint(int x, int y) {
+        checkpointX = x;
+        checkpointY = y;
+        checkpointActive = true;
+    }
+
+    private void hurtPlayer(int amount) {
+        if (!isAlive) {
+            return;
+        }
+        playerHealth = Math.max(0, playerHealth - amount);
+        hurtCooldown = 30;
+        if (playerHealth <= 0) {
+            playerHealth = 0;
+            isAlive = false;
+            player.setYVelocity(0);
+            player.setMoving(false);
+        }
+    }
+
+    private void respawnPlayerAtCheckpoint() {
+        int respawnX = checkpointActive ? checkpointX : spawnX;
+        int respawnY = checkpointActive ? checkpointY : spawnY;
+        player.setXPos(respawnX);
+        player.setYPos(respawnY);
+        player.setYVelocity(0);
+        player.setMoving(false);
+        playerHealth = MAX_HEALTH;
+        hurtCooldown = 30;
+        isAlive = true;
+        canJump = true;
+        hasDoubleJumped = false;
+        keysPressed.clear();
+    }
+
+    private void healPlayer(int amount) {
+        if (!isAlive) {
+            return;
+        }
+        playerHealth = Math.min(MAX_HEALTH, playerHealth + amount);
+    }
+
+    public void setPlayerSpawn(int x, int y) {
+        spawnX = x;
+        spawnY = y;
+        if (player != null) {
+            player.setXPos(x);
+            player.setYPos(y);
+        }
+    }
+
+    private void resetGame() {
+        isAlive = true;
+        playerHealth = MAX_HEALTH;
+        collectedCount = 0;
+        hurtCooldown = 0;
+        doubleJumpEnabled = false;
+        hasDoubleJumped = false;
+        canJump = true;
+        keysPressed.clear();
+
+        checkpointActive = false;
+        checkpointX = spawnX;
+        checkpointY = spawnY;
+
+        setPlayerSpawn(spawnX, spawnY);
+        player.setYVelocity(0);
+        player.setMoving(false);
+
+        collectibles.clear();
+        enemies.clear();
+
+        addCollectible(260, 700, 1);
+        addCollectible(520, 560, 2);
+        addCollectible(130, 580, 3);
+        addDoubleJumpItem(700, 700);
+        addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
+    }
+
     @Override
     public void keyPressed(KeyEvent e) {
+        if (!isAlive && e.getKeyCode() == KeyEvent.VK_R) {
+            respawnPlayerAtCheckpoint();
+            return;
+        }
         // runs when a key is pressed
         keysPressed.add(e.getKeyCode());
         // adds the key code into the set of pressed keys
@@ -334,6 +498,28 @@ public class GamePanel extends JPanel implements KeyListener {
     public void keyTyped(KeyEvent e) {
         // Not needed for movement
         // this is empty because movement uses keyPressed and keyReleased instead
+    }
+
+    private static class EnemyEntity extends Enemy {
+        int x;
+        int y;
+        final int width;
+        final int height;
+        final int patrolMinX;
+        final int patrolMaxX;
+        int dx;
+
+        EnemyEntity(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int dx) {
+            super(1, 1, false);
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.patrolMinX = patrolMinX;
+            this.patrolMaxX = patrolMaxX;
+            this.dx = dx;
+            setName("Enemy");
+        }
     }
 
     private static class Platform {
