@@ -40,6 +40,7 @@ public class GamePanel extends JPanel implements KeyListener {
     private int collectedCount = 0; // how many collectibles the player has picked up
     private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
     private int hurtCooldown = 0; // prevents repeated damage in the same contact
+    private int respawnProtection = 0; // temporary invulnerability after respawn
     private boolean isAlive = true; // whether the player is alive
     private boolean doubleJumpEnabled = false; // whether player can perform a second jump in the air
     private boolean hasDoubleJumped = false; // whether the player has already used the second jump
@@ -53,9 +54,12 @@ public class GamePanel extends JPanel implements KeyListener {
         setBackground(Color.BLACK);
         // makes the background black
         setFocusable(true);
-        // lets the panel receive keyboard input
+        setFocusTraversalKeysEnabled(false);
+        // lets the panel receive keyboard input and avoids focus traversal swallowing keys
         addKeyListener(this);
         // adds this class as the key listener
+        requestFocusInWindow();
+        // request focus so key events are delivered
 
         // Initialize player object
         player = new Player();
@@ -65,6 +69,8 @@ public class GamePanel extends JPanel implements KeyListener {
         keysPressed = new HashSet<>();
          // creates the set that stores pressed keys
         running = true;
+        player.setXPos(100);
+        player.setYPos(100);
         // makes the game loop allowed to run
 
         // Add platforms. Place them by calling addPlatform(x, y, width, height).
@@ -233,13 +239,16 @@ public class GamePanel extends JPanel implements KeyListener {
 
             boolean overlapX = newX < enemy.x + enemy.width && newX + PLAYER_SIZE > enemy.x;
             boolean overlapY = newY < enemy.y + enemy.height && newY + PLAYER_SIZE > enemy.y;
-            if (overlapX && overlapY && hurtCooldown <= 0) {
+            if (overlapX && overlapY && hurtCooldown <= 0 && respawnProtection <= 0) {
                 hurtPlayer(1);
             }
         }
 
         if (hurtCooldown > 0) {
             hurtCooldown--;
+        }
+        if (respawnProtection > 0) {
+            respawnProtection--;
         }
 
         // Collectible pickup
@@ -425,7 +434,9 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setYVelocity(0);
         player.setMoving(false);
         playerHealth = MAX_HEALTH;
-        hurtCooldown = 30;
+        // give a longer safety window after respawn to avoid instant damage
+        hurtCooldown = 120;
+        respawnProtection = 120;
         isAlive = true;
         canJump = true;
         hasDoubleJumped = false;

@@ -10,30 +10,25 @@
  * @author reesesanders
  */
 
-import foxsfortune.Hitbox;
-
 public class Entity {
 
     private String name;
     private int xPos;
     private int yPos;
     private boolean moving;
-    private Hitbox hitbox;
 
     public Entity() {
         this.name = "";
         this.xPos = 0;
         this.yPos = 0;
         this.moving = false;
-        this.hitbox = null;
     }
 
-    public Entity(String name, int xPos, int yPos, boolean moving, Hitbox hitbox) {
+    public Entity(String name, int xPos, int yPos, boolean moving) {
         this.name = name;
         this.xPos = xPos;
         this.yPos = yPos;
         this.moving = moving;
-        this.hitbox = hitbox;
     }
 
     public String getName() {
@@ -68,14 +63,6 @@ public class Entity {
         this.moving = moving;
     }
 
-    public Hitbox getHitbox() {
-        return hitbox;
-    }
-
-    public void setHitbox(Hitbox hitbox) {
-        this.hitbox = hitbox;
-    }
-
     @Override
     public String toString() {
         return "Entity{" +
@@ -83,7 +70,6 @@ public class Entity {
                 ", xPos=" + xPos +
                 ", yPos=" + yPos +
                 ", moving=" + moving +
-                ", hitbox=" + hitbox +
                 '}';
     }
 }

@@ -34,6 +34,8 @@ public class FoxsFortune extends JFrame {
         // sets the window size
         setVisible(true);
         // makes the window show up
+        gamePanel.requestFocusInWindow();
+        // ensure the game panel has keyboard focus for input
     }
 
     /**
