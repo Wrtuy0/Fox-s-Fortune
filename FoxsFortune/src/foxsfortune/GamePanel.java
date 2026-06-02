@@ -89,6 +89,7 @@ public class GamePanel extends JPanel implements KeyListener {
         addCollectible(260, 700, 1);
         addCollectible(520, 560, 2);
         addCollectible(130, 580, 3);
+        addHealthPickup(380, 700);
         addDoubleJumpItem(700, 700);
         addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
         addCheckpoint(520, 600, 20, 20);
@@ -241,6 +242,19 @@ public class GamePanel extends JPanel implements KeyListener {
             boolean overlapY = newY < enemy.y + enemy.height && newY + PLAYER_SIZE > enemy.y;
             if (overlapX && overlapY && hurtCooldown <= 0 && respawnProtection <= 0) {
                 hurtPlayer(1);
+                // apply knockback away from the enemy so the player isn't immediately re-hit
+                int knockbackDistance = 40; // pixels to push the player
+                int enemyCenter = enemy.x + enemy.width / 2;
+                int playerCenter = newX + PLAYER_SIZE / 2;
+                if (playerCenter < enemyCenter) {
+                    newX = Math.max(0, newX - knockbackDistance);
+                } else {
+                    newX = Math.min(getWidth() - PLAYER_SIZE, newX + knockbackDistance);
+                }
+                // slight upward knock to visually separate from the enemy
+                yVelocity = JUMP_FORCE / 2;
+                // give short invulnerability after knockback
+                respawnProtection = 30;
             }
         }
 
@@ -259,10 +273,14 @@ public class GamePanel extends JPanel implements KeyListener {
             boolean overlapX = newX < collX + COLLECTIBLE_SIZE && newX + PLAYER_SIZE > collX;
             boolean overlapY = newY < collY + COLLECTIBLE_SIZE && newY + PLAYER_SIZE > collY;
             if (overlapX && overlapY) {
-                if ("Double Jump Item".equals(collectible.getName())) {
+                String name = collectible.getName();
+                if ("Double Jump Item".equals(name)) {
                     doubleJumpEnabled = true;
+                } else if ("Health Pickup".equals(name)) {
+                    healPlayer(1);
+                } else {
+                    collectedCount++;
                 }
-                collectedCount++;
                 collectibles.remove(i);
             }
         }
@@ -334,8 +352,11 @@ public class GamePanel extends JPanel implements KeyListener {
 
         // Render collectibles
         for (Collectible collectible : collectibles) {
-            if ("Double Jump Item".equals(collectible.getName())) {
+            String name = collectible.getName();
+            if ("Double Jump Item".equals(name)) {
                 g2d.setColor(Color.CYAN);
+            } else if ("Health Pickup".equals(name)) {
+                g2d.setColor(Color.GREEN);
             } else {
                 g2d.setColor(Color.YELLOW);
             }
@@ -395,6 +416,14 @@ public class GamePanel extends JPanel implements KeyListener {
         collectible.setXPos(x);
         collectible.setYPos(y);
         collectible.setName("Double Jump Item");
+        collectibles.add(collectible);
+    }
+
+    private void addHealthPickup(int x, int y) {
+        Collectible collectible = new Collectible(0);
+        collectible.setXPos(x);
+        collectible.setYPos(y);
+        collectible.setName("Health Pickup");
         collectibles.add(collectible);
     }
 
@@ -483,6 +512,7 @@ public class GamePanel extends JPanel implements KeyListener {
         addCollectible(260, 700, 1);
         addCollectible(520, 560, 2);
         addCollectible(130, 580, 3);
+        addHealthPickup(380, 700);
         addDoubleJumpItem(700, 700);
         addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
     }
