@@ -22,7 +22,7 @@ public class FoxsFortune extends JFrame {
         // closes the program when the window is closed
         setResizable(false);
         // makes it so the window size cannot be changed
-        setLocationRelativeTo(null);
+        setLocation(0, 0);
         // puts the window around the center of the screen
 
         gamePanel = new GamePanel();

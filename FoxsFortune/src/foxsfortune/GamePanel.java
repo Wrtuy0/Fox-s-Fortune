@@ -432,6 +432,9 @@ public class GamePanel extends JPanel implements KeyListener {
             // sets the player color to orange
             g2d.fillRect(player.getXPos(), player.getYPos(), PLAYER_SIZE, PLAYER_SIZE);
             // draws the player as a square/rectangle
+            
+            //draw the actual model
+            
 
             // Draw player name
             g2d.setColor(Color.WHITE);
