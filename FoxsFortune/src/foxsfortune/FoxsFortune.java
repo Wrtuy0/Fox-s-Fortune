@@ -23,7 +23,7 @@ public class FoxsFortune extends JFrame {
         setResizable(false);
         // makes it so the window size cannot be changed
         setLocation(0, 0);
-        // puts the window around the center of the screen
+        // puts the window in the upper left of the screen
 
         gamePanel = new GamePanel();
         // creates the panel where the game runs

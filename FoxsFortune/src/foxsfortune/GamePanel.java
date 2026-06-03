@@ -5,10 +5,16 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import javax.imageio.ImageIO;
+import javax.swing.ImageIcon;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
@@ -58,6 +64,8 @@ public class GamePanel extends JPanel implements KeyListener {
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
+    //animations
+    private BufferedImage image;
 
     public GamePanel() {//constructor 
         setBackground(Color.BLACK);
@@ -434,6 +442,17 @@ public class GamePanel extends JPanel implements KeyListener {
             // draws the player as a square/rectangle
             
             //draw the actual model
+            URL foxURL = FoxsFortune.class.getResource("BiggerFoxModel.png");
+            try{
+                image = ImageIO.read(getClass().getResource(foxURL.toString()));
+            }
+            catch(IOException e){
+                System.out.println("Error: " + e);
+            }
+            if(image != null){
+                g2d.drawImage(image, player.getXPos(), player.getYPos(), null);
+            }
+            
             
 
             // Draw player name
