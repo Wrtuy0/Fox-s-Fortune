@@ -90,11 +90,11 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setYPos(100);
         // makes the game loop allowed to run
         // import the player's model from classpath resources
-        URL foxURL = FoxsFortune.class.getResource("/foxsfortune/BiggerFoxModel.png");
+        URL foxURL = FoxsFortune.class.getResource("/foxsfortune/images/player models/BiggerFoxModel.png");
         if (foxURL == null) {
             // Fallback for running directly from the project directory during development.
             try {
-                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/BiggerFoxModel.png");
+                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/images/player models/BiggerFoxModel.png");
                 if (fallbackFile.exists()) {
                     foxURL = fallbackFile.toURI().toURL();
                 }
