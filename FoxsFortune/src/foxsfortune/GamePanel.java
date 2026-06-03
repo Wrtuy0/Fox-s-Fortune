@@ -13,8 +13,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.imageio.ImageIO;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 /**
@@ -27,7 +25,9 @@ public class GamePanel extends JPanel implements KeyListener {
     private Player player; // player attrubute and object that gets moved and drawn on the screen
     private Set<Integer> keysPressed; // attrubuite to hold what was pressed set that stores all the keys currently being held down
     private final int PLAYER_SPEED = 5; // player base speed attrubute
-    private final int PLAYER_SIZE = 30; // player pixel form size attrubute
+    private final int PLAYER_SIZE = 30; // default player size if sprite is unavailable
+    private int playerWidth = PLAYER_SIZE; // actual player width based on sprite
+    private int playerHeight = PLAYER_SIZE; // actual player height based on sprite
     private final int COLLECTIBLE_SIZE = 20; // collectible size in pixels
     private final double GRAVITY = 0.6; // a gravity attrubute to keep the player from jumping to space forever
     private final double JUMP_FORCE = -15.0; // player base jump power  attrubute
@@ -89,14 +89,33 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setXPos(100);
         player.setYPos(100);
         // makes the game loop allowed to run
-        //import the player's model
-        URL foxURL = FoxsFortune.class.getResource("BiggerFoxModel.png");
-            try{
-                image = ImageIO.read(getClass().getResource(foxURL.toString()));
+        // import the player's model from classpath resources
+        URL foxURL = FoxsFortune.class.getResource("/foxsfortune/BiggerFoxModel.png");
+        if (foxURL == null) {
+            // Fallback for running directly from the project directory during development.
+            try {
+                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/BiggerFoxModel.png");
+                if (fallbackFile.exists()) {
+                    foxURL = fallbackFile.toURI().toURL();
+                }
+            } catch (java.net.MalformedURLException e) {
+                System.err.println("Error resolving fallback player model path: " + e);
             }
-            catch(IOException e){
-                System.out.println("Error: " + e);
+        }
+
+        if (foxURL != null) {
+            try {
+                image = ImageIO.read(foxURL);
+                if (image != null) {
+                    playerWidth = image.getWidth();
+                    playerHeight = image.getHeight();
+                }
+            } catch (IOException e) {
+                System.err.println("Error reading player model image: " + e);
             }
+        } else {
+            System.err.println("Warning: BiggerFoxModel.png not found in classpath resources.");
+        }
 
         // Add platforms. Place them by calling addPlatform(x, y, width, height).
         addPlatform(200, 750, 200, 20);
@@ -106,7 +125,7 @@ public class GamePanel extends JPanel implements KeyListener {
         // Start position on the first platform by default
         if (!platforms.isEmpty()) {
             Platform startPlatform = platforms.get(0);
-            setPlayerSpawn(startPlatform.x + 10, startPlatform.y - PLAYER_SIZE);
+            setPlayerSpawn(startPlatform.x + 10, startPlatform.y - playerHeight);
         } else {
             setPlayerSpawn(getWidth() / 2, getHeight() / 2);
         }
@@ -187,9 +206,9 @@ public class GamePanel extends JPanel implements KeyListener {
         else if (xVelocity < 0) facingRight = false;
 
         int previousTop = player.getYPos();
-        int previousBottom = previousTop + PLAYER_SIZE;
+        int previousBottom = previousTop + playerHeight;
         int previousLeft = player.getXPos();
-        int previousRight = previousLeft + PLAYER_SIZE;
+        int previousRight = previousLeft + playerWidth;
 
         // Apply horizontal movement first
         newX += (int) xVelocity;
@@ -199,8 +218,8 @@ public class GamePanel extends JPanel implements KeyListener {
                 continue;
             }
 
-            if (xVelocity > 0 && previousRight <= platform.x && newX + PLAYER_SIZE > platform.x) {
-                newX = platform.x - PLAYER_SIZE;
+            if (xVelocity > 0 && previousRight <= platform.x && newX + playerWidth > platform.x) {
+                newX = platform.x - playerWidth;
                 xVelocity = 0;
             } else if (xVelocity < 0 && previousLeft >= platform.x + platform.width && newX < platform.x + platform.width) {
                 newX = platform.x + platform.width;
@@ -233,8 +252,8 @@ public class GamePanel extends JPanel implements KeyListener {
         newY += (int) yVelocity;
         int newTop = newY;
         int newLeft = newX;
-        int newRight = newX + PLAYER_SIZE;
-        int newBottom = newY + PLAYER_SIZE;
+        int newRight = newX + playerWidth;
+        int newBottom = newY + playerHeight;
 
         // Platform collision
         boolean landedOnPlatform = false;
@@ -245,7 +264,7 @@ public class GamePanel extends JPanel implements KeyListener {
             }
 
             if (yVelocity > 0 && previousBottom <= platform.y && newBottom > platform.y) {
-                newY = platform.y - PLAYER_SIZE;
+                newY = platform.y - playerHeight;
                 yVelocity = 0;
                 canJump = true;
                 hasDoubleJumped = false;
@@ -256,7 +275,7 @@ public class GamePanel extends JPanel implements KeyListener {
             }
 
             newTop = newY;
-            newBottom = newY + PLAYER_SIZE;
+            newBottom = newY + playerHeight;
         }
 
         // Enemy movement and simple collision
@@ -267,18 +286,18 @@ public class GamePanel extends JPanel implements KeyListener {
                 enemy.x += enemy.dx;
             }
 
-            boolean overlapX = newX < enemy.x + enemy.width && newX + PLAYER_SIZE > enemy.x;
-            boolean overlapY = newY < enemy.y + enemy.height && newY + PLAYER_SIZE > enemy.y;
+            boolean overlapX = newX < enemy.x + enemy.width && newX + playerWidth > enemy.x;
+            boolean overlapY = newY < enemy.y + enemy.height && newY + playerHeight > enemy.y;
             if (overlapX && overlapY && hurtCooldown <= 0 && respawnProtection <= 0) {
                 hurtPlayer(1);
                 // apply knockback away from the enemy so the player isn't immediately re-hit
                 int knockbackDistance = 40; // pixels to push the player
                 int enemyCenter = enemy.x + enemy.width / 2;
-                int playerCenter = newX + PLAYER_SIZE / 2;
+                int playerCenter = newX + playerWidth / 2;
                 if (playerCenter < enemyCenter) {
                     newX = Math.max(0, newX - knockbackDistance);
                 } else {
-                    newX = Math.min(getWidth() - PLAYER_SIZE, newX + knockbackDistance);
+                    newX = Math.min(getWidth() - playerWidth, newX + knockbackDistance);
                 }
                 // slight upward knock to visually separate from the enemy
                 yVelocity = JUMP_FORCE / 2;
@@ -294,13 +313,13 @@ public class GamePanel extends JPanel implements KeyListener {
             // compute attack hitbox
             int attackX;
             if (facingRight) {
-                attackX = newX + PLAYER_SIZE;
+                attackX = newX + playerWidth;
             } else {
                 attackX = newX - ATTACK_RANGE;
             }
             int attackY = newY;
             int attackW = ATTACK_RANGE;
-            int attackH = PLAYER_SIZE;
+            int attackH = playerHeight;
 
             // check enemies for hit
             for (int i = enemies.size() - 1; i >= 0; i--) {
@@ -333,8 +352,8 @@ public class GamePanel extends JPanel implements KeyListener {
             Collectible collectible = collectibles.get(i);
             int collX = collectible.getXPos();
             int collY = collectible.getYPos();
-            boolean overlapX = newX < collX + COLLECTIBLE_SIZE && newX + PLAYER_SIZE > collX;
-            boolean overlapY = newY < collY + COLLECTIBLE_SIZE && newY + PLAYER_SIZE > collY;
+            boolean overlapX = newX < collX + COLLECTIBLE_SIZE && newX + playerWidth > collX;
+            boolean overlapY = newY < collY + COLLECTIBLE_SIZE && newY + playerHeight > collY;
             if (overlapX && overlapY) {
                 String name = collectible.getName();
                 if ("Double Jump Item".equals(name)) {
@@ -350,11 +369,11 @@ public class GamePanel extends JPanel implements KeyListener {
 
         // Checkpoint activation
         for (Checkpoint checkpoint : checkpoints) {
-            boolean overlapX = newX < checkpoint.x + checkpoint.width && newX + PLAYER_SIZE > checkpoint.x;
-            boolean overlapY = newY < checkpoint.y + checkpoint.height && newY + PLAYER_SIZE > checkpoint.y;
+            boolean overlapX = newX < checkpoint.x + checkpoint.width && newX + playerWidth > checkpoint.x;
+            boolean overlapY = newY < checkpoint.y + checkpoint.height && newY + playerHeight > checkpoint.y;
             if (overlapX && overlapY) {
-                int respawnX = checkpoint.x - (PLAYER_SIZE - checkpoint.width) / 2;
-                int respawnY = checkpoint.y - PLAYER_SIZE;
+                int respawnX = checkpoint.x - (playerWidth - checkpoint.width) / 2;
+                int respawnY = checkpoint.y - playerHeight;
                 setCheckpoint(respawnX, respawnY);
             }
         }
@@ -372,7 +391,7 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         // Bounds checking (horizontal)
-        newX = Math.max(0, Math.min(newX, getWidth() - PLAYER_SIZE));
+        newX = Math.max(0, Math.min(newX, getWidth() - playerWidth));
         // keeps the player from leaving the left or right side of the screen
 
         // Prevent going above screen
@@ -437,24 +456,29 @@ public class GamePanel extends JPanel implements KeyListener {
         // Render attack hitbox if active
         if (attackActive) {
             g2d.setColor(Color.WHITE);
-            int drawX = facingRight ? player.getXPos() + PLAYER_SIZE : player.getXPos() - ATTACK_RANGE;
-            g2d.fillRect(drawX, player.getYPos(), ATTACK_RANGE, PLAYER_SIZE);
+            int drawX = facingRight ? player.getXPos() + playerWidth : player.getXPos() - ATTACK_RANGE;
+            g2d.fillRect(drawX, player.getYPos(), ATTACK_RANGE, playerHeight);
         }
 
         // Render player
         if (player != null) {
             // only draw the player if the player exists
-            g2d.setColor(Color.ORANGE);
-            // sets the player color to orange
-            g2d.fillRect(player.getXPos(), player.getYPos(), PLAYER_SIZE, PLAYER_SIZE);
-            // draws the player as a square/rectangle
-            
-            //draw the actual model
-            if(image != null){
-                g2d.drawImage(image, player.getXPos(), player.getYPos(), null);
+            if (image != null) {
+                if (facingRight) {
+                    g2d.drawImage(image, player.getXPos(), player.getYPos(), playerWidth, playerHeight, null);
+                } else {
+                    g2d.drawImage(image,
+                            player.getXPos() + playerWidth, player.getYPos(),
+                            player.getXPos(), player.getYPos() + playerHeight,
+                            0, 0, image.getWidth(), image.getHeight(),
+                            null);
+                }
+            } else {
+                g2d.setColor(Color.ORANGE);
+                // sets the player color to orange
+                g2d.fillRect(player.getXPos(), player.getYPos(), playerWidth, playerHeight);
+                // draws the player as a square/rectangle
             }
-            
-            
 
             // Draw player name
             g2d.setColor(Color.WHITE);
