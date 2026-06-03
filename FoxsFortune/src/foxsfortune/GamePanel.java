@@ -89,6 +89,14 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setXPos(100);
         player.setYPos(100);
         // makes the game loop allowed to run
+        //import the player's model
+        URL foxURL = FoxsFortune.class.getResource("BiggerFoxModel.png");
+            try{
+                image = ImageIO.read(getClass().getResource(foxURL.toString()));
+            }
+            catch(IOException e){
+                System.out.println("Error: " + e);
+            }
 
         // Add platforms. Place them by calling addPlatform(x, y, width, height).
         addPlatform(200, 750, 200, 20);
@@ -442,13 +450,6 @@ public class GamePanel extends JPanel implements KeyListener {
             // draws the player as a square/rectangle
             
             //draw the actual model
-            URL foxURL = FoxsFortune.class.getResource("BiggerFoxModel.png");
-            try{
-                image = ImageIO.read(getClass().getResource(foxURL.toString()));
-            }
-            catch(IOException e){
-                System.out.println("Error: " + e);
-            }
             if(image != null){
                 g2d.drawImage(image, player.getXPos(), player.getYPos(), null);
             }
