@@ -30,8 +30,8 @@ public class FoxsFortune extends JFrame {
         add(gamePanel);
         // adds the game panel onto the frame/window
 
-        setSize(1000, 900);
-        // sets the window size
+        pack();
+        // sizes the frame to the panel so the drawing area matches the image pixels
         setVisible(true);
         // makes the window show up
         gamePanel.requestFocusInWindow();

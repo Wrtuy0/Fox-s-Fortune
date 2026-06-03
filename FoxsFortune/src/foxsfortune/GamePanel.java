@@ -1,8 +1,10 @@
 package foxsfortune;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
@@ -18,7 +20,7 @@ import javax.swing.JPanel;
 /**
  * Game panel for rendering and managing game logic.
  *
- * @author Reese Sanders, Logan Saywich and Aws Tariq
+ * @author Reese Sanders, Logan Saywich and Aws Tariq and Copiliot AI for logic and structure assistance (I belive the the specific model used was Raptor Mini, but I am not sure)
  */
 public class GamePanel extends JPanel implements KeyListener {
 
@@ -64,8 +66,16 @@ public class GamePanel extends JPanel implements KeyListener {
     private Thread gameThread; // a thread that keeps the game loop running
     private boolean running; // a boolean that controls if the game loop should keep going
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
-    //animations
+    // animations
     private BufferedImage image;
+    private BufferedImage backgroundImage;
+
+    public enum EnemyType {
+        BASIC,
+        GROUND,
+        FLYING,
+        KAMIKAZI
+    }
 
     public GamePanel() {//constructor 
         setBackground(Color.BLACK);
@@ -77,6 +87,9 @@ public class GamePanel extends JPanel implements KeyListener {
         // adds this class as the key listener
         requestFocusInWindow();
         // request focus so key events are delivered
+
+        setPreferredSize(new Dimension(1000, 900));
+        // lock the game panel to the image's expected resolution
 
         // Initialize player object
         player = new Player();
@@ -117,25 +130,66 @@ public class GamePanel extends JPanel implements KeyListener {
             System.err.println("Warning: BiggerFoxModel.png not found in classpath resources.");
         }
 
-        // Add platforms. Place them by calling addPlatform(x, y, width, height).
-        addPlatform(200, 750, 200, 20);
-        addPlatform(450, 620, 150, 20);
-        addPlatform(150, 620, 100, 20);
-
-        // Start position on the first platform by default
-        if (!platforms.isEmpty()) {
-            Platform startPlatform = platforms.get(0);
-            setPlayerSpawn(startPlatform.x + 10, startPlatform.y - playerHeight);
-        } else {
-            setPlayerSpawn(getWidth() / 2, getHeight() / 2);
+        // Load the background image from the new images/backgrounds folder.
+        URL bgURL = FoxsFortune.class.getResource("/foxsfortune/images/backgrounds/Room1Shell.png");
+        if (bgURL == null) {
+            try {
+                java.io.File fallbackBg = new java.io.File("FoxsFortune/src/foxsfortune/images/backgrounds/Room1Shell.png");
+                if (fallbackBg.exists()) {
+                    bgURL = fallbackBg.toURI().toURL();
+                }
+            } catch (java.net.MalformedURLException e) {
+                System.err.println("Error resolving fallback background path: " + e);
+            }
         }
+
+        if (bgURL != null) {
+            try {
+                backgroundImage = ImageIO.read(bgURL);
+            } catch (IOException e) {
+                System.err.println("Error reading background image: " + e);
+            }
+        } else {
+            System.err.println("Warning: Room1Shell.png not found in classpath resources.");
+        }
+
+        // Add platforms to match the red collision lines in Room1Shell.png
+        // Bottom interior floor and walls
+        addPlatform(19, 620, 279, 4);      // left lower floor
+        addPlatform(19, 620, 4, 162);       // left lower wall
+        addPlatform(294, 620, 4, 90);       // inner left vertical wall
+        addPlatform(294, 706, 105, 4);      // lower center platform
+        addPlatform(19, 778, 483, 4);       // bottom interior floor
+
+        // Midroom floors and divider
+        addPlatform(0, 520, 398, 4);        // left midroom floor
+        addPlatform(498, 520, 502, 4);      // right midroom floor
+        addPlatform(322, 492, 77, 4);       // central mid ledge
+        addPlatform(395, 485, 4, 225);      // central divider wall
+        addPlatform(498, 492, 4, 290);      // right vertical wall
+
+        // Upper interior platforms
+        addPlatform(0, 446, 326, 4);        // left upper platform
+        addPlatform(598, 444, 402, 6);      // right upper platform
+        addPlatform(228, 347, 95, 19);      // central right platform
+        addPlatform(604, 353, 96, 19);      // upper right platform
+        addPlatform(77, 319, 84, 22);       // lower left mid platform
+
+        // Floating top platforms
+        addPlatform(113, 220, 42, 15);      // top left small ledge
+        addPlatform(909, 240, 33, 16);      // top right small ledge
+        addPlatform(255, 255, 56, 13);      // upper left mid platform
+        addPlatform(740, 297, 64, 16);      // upper right mid platform
+
+        // Start the player inside the lower room box
+        setPlayerSpawn(140, 778 - playerHeight);
 
         addCollectible(260, 700, 1);
         addCollectible(520, 560, 2);
         addCollectible(130, 580, 3);
         addHealthPickup(380, 700);
         addDoubleJumpItem(700, 700);
-        addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
+        // no starting enemy; begin the level empty
         addCheckpoint(520, 600, 20, 20);
 
         // Start game loop
@@ -280,10 +334,25 @@ public class GamePanel extends JPanel implements KeyListener {
 
         // Enemy movement and simple collision
         for (EnemyEntity enemy : enemies) {
-            enemy.x += enemy.dx;
-            if (enemy.x < enemy.patrolMinX || enemy.x + enemy.width > enemy.patrolMaxX) {
-                enemy.dx = -enemy.dx;
+            if (enemy.hasPath()) {
+                Point target = enemy.getCurrentPathTarget();
+                int deltaX = target.x - enemy.x;
+                int deltaY = target.y - enemy.y;
+                double distance = Math.hypot(deltaX, deltaY);
+                if (distance <= enemy.speed || distance == 0) {
+                    enemy.x = target.x;
+                    enemy.y = target.y;
+                    enemy.advancePathIndex();
+                } else {
+                    enemy.x += (int) Math.round(deltaX / distance * enemy.speed);
+                    enemy.y += (int) Math.round(deltaY / distance * enemy.speed);
+                }
+            } else {
                 enemy.x += enemy.dx;
+                if (enemy.x < enemy.patrolMinX || enemy.x + enemy.width > enemy.patrolMaxX) {
+                    enemy.dx = -enemy.dx;
+                    enemy.x += enemy.dx;
+                }
             }
 
             boolean overlapX = newX < enemy.x + enemy.width && newX + playerWidth > enemy.x;
@@ -418,6 +487,11 @@ public class GamePanel extends JPanel implements KeyListener {
         Graphics2D g2d = (Graphics2D) g;
         // changes Graphics into Graphics2D so drawing is easier
 
+        // Render background image if available
+        if (backgroundImage != null) {
+            g2d.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), null);
+        }
+
         // Render platforms
         g2d.setColor(Color.GRAY);
         for (Platform platform : platforms) {
@@ -530,6 +604,34 @@ public class GamePanel extends JPanel implements KeyListener {
 
     private void addEnemy(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int dx) {
         enemies.add(new EnemyEntity(x, y, width, height, patrolMinX, patrolMaxX, dx));
+    }
+
+    public void spawnEnemy(EnemyType enemyType, int x, int y, int width, int height, List<Point> path, int speed) {
+        List<Point> pathCopy = (path == null) ? null : new ArrayList<>(path);
+        EnemyEntity enemy = new EnemyEntity(x, y, width, height, 0, 0, speed, pathCopy, enemyType);
+        switch (enemyType) {
+            case GROUND -> {
+                enemy.setHealth(3);
+                enemy.setDamage(2);
+                enemy.setName("Ground");
+            }
+            case FLYING -> {
+                enemy.setHealth(2);
+                enemy.setDamage(1);
+                enemy.setName("Flying");
+            }
+            case KAMIKAZI -> {
+                enemy.setHealth(1);
+                enemy.setDamage(3);
+                enemy.setName("Kamikazi");
+            }
+            default -> {
+                enemy.setHealth(1);
+                enemy.setDamage(1);
+                enemy.setName("Enemy");
+            }
+        }
+        enemies.add(enemy);
     }
 
     private void addCheckpoint(int x, int y, int width, int height) {
@@ -658,8 +760,18 @@ public class GamePanel extends JPanel implements KeyListener {
         final int patrolMinX;
         final int patrolMaxX;
         int dx;
+        int dy;
+        int speed;
+        final List<Point> path;
+        int pathIndex;
+        int pathDirection;
+        final EnemyType enemyType;
 
         EnemyEntity(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int dx) {
+            this(x, y, width, height, patrolMinX, patrolMaxX, dx, null, EnemyType.BASIC);
+        }
+
+        EnemyEntity(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int speed, List<Point> path, EnemyType enemyType) {
             super(1, 1, false);
             this.x = x;
             this.y = y;
@@ -667,8 +779,36 @@ public class GamePanel extends JPanel implements KeyListener {
             this.height = height;
             this.patrolMinX = patrolMinX;
             this.patrolMaxX = patrolMaxX;
-            this.dx = dx;
+            this.dx = speed;
+            this.dy = 0;
+            this.speed = speed;
+            this.path = (path == null || path.isEmpty()) ? null : new ArrayList<>(path);
+            this.pathIndex = 0;
+            this.pathDirection = 1;
+            this.enemyType = enemyType;
             setName("Enemy");
+        }
+
+        boolean hasPath() {
+            return path != null && !path.isEmpty();
+        }
+
+        Point getCurrentPathTarget() {
+            return hasPath() ? path.get(pathIndex) : null;
+        }
+
+        void advancePathIndex() {
+            if (path == null || path.isEmpty()) {
+                return;
+            }
+            pathIndex += pathDirection;
+            if (pathIndex >= path.size()) {
+                pathIndex = path.size() - 2;
+                pathDirection = -1;
+            } else if (pathIndex < 0) {
+                pathIndex = 1;
+                pathDirection = 1;
+            }
         }
     }
 
