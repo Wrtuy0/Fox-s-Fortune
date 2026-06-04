@@ -134,7 +134,7 @@ public class GamePanel extends JPanel implements KeyListener {
             System.err.println("Warning: BiggerFoxModel.png not found in classpath resources.");
         }
 
-        initializeRoom1("/foxsfortune/images/backgrounds/Room1Shell.png", 140, 778 - playerHeight);
+        startInRoom(1);
 
         // Start game loop
         startGameLoop();
@@ -142,7 +142,7 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
-        registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, () -> {
+        registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, 0, 2, () -> {
             // Add platforms to match the red collision lines in Room1Shell.png
             addPlatform(19, 620, 279, 10);      // left lower floor
             addPlatform(19, 620, 10, 162);       // left lower wall
@@ -168,8 +168,6 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(255, 255, 56, 13);      // upper left mid platform
             addPlatform(740, 297, 64, 16);      // upper right mid platform
         });
-
-        loadRoom(1);
     }
     
     private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
@@ -181,8 +179,45 @@ public class GamePanel extends JPanel implements KeyListener {
         loadRoom(2);
     }
 
-    private void registerRoom(int roomId, String backgroundResource, int playerSpawnX, int playerSpawnY, Runnable roomSetup) {
-        roomDefinitions.put(roomId, new RoomDefinition(backgroundResource, playerSpawnX, playerSpawnY, roomSetup));
+    private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
+        registerRoom(2, backgroundResource, playerSpawnX, playerSpawnY, 1, 0, () -> {
+            // Add platforms to match the right-side Room2Shell.png layout
+            addPlatform(0, 820, 1000, 4);        // base floor across room
+            addPlatform(0, 640, 300, 4);         // left mid floor
+            addPlatform(350, 720, 650, 4);       // lower right floor
+            addPlatform(70, 525, 160, 4);        // left upper ledge
+            addPlatform(420, 520, 210, 4);       // center high platform
+            addPlatform(750, 420, 220, 4);       // upper right platform
+            addPlatform(940, 520, 4, 380);       // right wall
+            addPlatform(0, 0, 4, 900);           // left room boundary
+            addPlatform(200, 330, 130, 4);       // mid left small platform
+            addPlatform(560, 260, 240, 4);       // top right small platform
+        });
+    }
+
+    private void initializeRooms() {
+        initializeRoom1("/foxsfortune/images/backgrounds/Room1Shell.png", 140, 778 - playerHeight);
+        initializeRoom2("/foxsfortune/images/backgrounds/Room2Shell.png", 60, 778 - playerHeight);
+    }
+
+    private void startInRoom(int roomId) {
+        initializeRooms();
+        loadRoom(roomId);
+        currentRoom = roomId;
+        RoomDefinition room = roomDefinitions.get(roomId);
+        if (room != null) {
+            player.setXPos(room.playerSpawnX);
+            player.setYPos(room.playerSpawnY);
+            spawnX = room.playerSpawnX;
+            spawnY = room.playerSpawnY;
+            checkpointX = room.playerSpawnX;
+            checkpointY = room.playerSpawnY;
+            checkpointActive = false;
+        }
+    }
+
+    private void registerRoom(int roomId, String backgroundResource, int playerSpawnX, int playerSpawnY, int leftRoomId, int rightRoomId, Runnable roomSetup) {
+        roomDefinitions.put(roomId, new RoomDefinition(backgroundResource, playerSpawnX, playerSpawnY, leftRoomId, rightRoomId, roomSetup));
     }
 
     private void loadRoom(int roomId) {
@@ -207,6 +242,31 @@ public class GamePanel extends JPanel implements KeyListener {
         checkpointY = room.playerSpawnY;
         player.setYVelocity(0);
         player.setMoving(false);
+    }
+
+    private int switchRoomIfNeeded(int newX) {
+        RoomDefinition current = roomDefinitions.get(currentRoom);
+        if (current == null) {
+            return newX;
+        }
+
+        if (getWidth() <= playerWidth) {
+            return newX;
+        }
+
+        if (newX > getWidth() - playerWidth && current.rightRoomId != 0) {
+            loadRoom(current.rightRoomId);
+            player.setXPos(0);
+            player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
+            return 0;
+        } else if (newX < 0 && current.leftRoomId != 0) {
+            loadRoom(current.leftRoomId);
+            player.setXPos(getWidth() - playerWidth);
+            player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
+            return getWidth() - playerWidth;
+        }
+
+        return newX;
     }
 
     private void loadBackground(String backgroundResource) {
@@ -238,12 +298,16 @@ public class GamePanel extends JPanel implements KeyListener {
         final String backgroundResource;
         final int playerSpawnX;
         final int playerSpawnY;
+        final int leftRoomId;
+        final int rightRoomId;
         final Runnable roomSetup;
 
-        RoomDefinition(String backgroundResource, int playerSpawnX, int playerSpawnY, Runnable roomSetup) {
+        RoomDefinition(String backgroundResource, int playerSpawnX, int playerSpawnY, int leftRoomId, int rightRoomId, Runnable roomSetup) {
             this.backgroundResource = backgroundResource;
             this.playerSpawnX = playerSpawnX;
             this.playerSpawnY = playerSpawnY;
+            this.leftRoomId = leftRoomId;
+            this.rightRoomId = rightRoomId;
             this.roomSetup = roomSetup;
         }
     }
@@ -509,6 +573,9 @@ public class GamePanel extends JPanel implements KeyListener {
             hasDoubleJumped = false;
             // allows jumping again because the player is on ground
         }
+
+        // Handle room transitions at the screen edges
+        newX = switchRoomIfNeeded(newX);
 
         // Bounds checking (horizontal)
         newX = Math.max(0, Math.min(newX, getWidth() - playerWidth));
