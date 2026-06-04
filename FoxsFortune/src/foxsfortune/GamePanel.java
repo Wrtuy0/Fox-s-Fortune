@@ -173,15 +173,6 @@ public class GamePanel extends JPanel implements KeyListener {
     }
     
     private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
-        registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, () -> {
-            // Add platforms to match the red collision lines in Room1Shell.png
-            
-        });
-
-        loadRoom(2);
-    }
-
-    private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
         registerRoom(2, backgroundResource, playerSpawnX, playerSpawnY, 1, 0, () -> {
             // Add platforms to match the right-side Room2Shell.png layout
             addPlatform(0, 820, 1000, 4);        // base floor across room
@@ -191,7 +182,7 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(420, 520, 210, 4);       // center high platform
             addPlatform(750, 420, 220, 4);       // upper right platform
             addPlatform(940, 520, 4, 380);       // right wall
-            addPlatform(0, 0, 4, 900);           // left room boundary
+            // left room boundary removed so the player can traverse back to room 1 at the screen edge
             addPlatform(200, 330, 130, 4);       // mid left small platform
             addPlatform(560, 260, 240, 4);       // top right small platform
         });
@@ -260,12 +251,12 @@ public class GamePanel extends JPanel implements KeyListener {
             return newX;
         }
 
-        if (newX > getWidth() - playerWidth && current.rightRoomId != 0) {
+        if (newX >= getWidth() - playerWidth && current.rightRoomId != 0) {
             loadRoom(current.rightRoomId);
             player.setXPos(0);
             player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
             return 0;
-        } else if (newX < 0 && current.leftRoomId != 0) {
+        } else if (newX <= 0 && current.leftRoomId != 0) {
             loadRoom(current.leftRoomId);
             player.setXPos(getWidth() - playerWidth);
             player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
