@@ -545,12 +545,6 @@ public class GamePanel extends JPanel implements KeyListener {
                 g2d.fillRect(player.getXPos(), player.getYPos(), playerWidth, playerHeight);
                 // draws the player as a square/rectangle
             }
-
-            // Draw player name
-            g2d.setColor(Color.WHITE);
-            // sets text color to white
-            g2d.drawString(player.getName(), player.getXPos(), player.getYPos() - 5);
-            // draws the player's name above the square
         }
 
         // Draw score and health
