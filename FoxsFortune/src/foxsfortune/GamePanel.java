@@ -144,23 +144,21 @@ public class GamePanel extends JPanel implements KeyListener {
     private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
         registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, () -> {
             // Add platforms to match the red collision lines in Room1Shell.png
-            addPlatform(19, 620, 279, 4);      // left lower floor
-            addPlatform(19, 620, 4, 162);       // left lower wall
-            addPlatform(294, 620, 4, 90);       // inner left vertical wall
-            addPlatform(294, 706, 105, 4);      // lower center platform
-            addPlatform(19, 778, 483, 4);       // bottom interior floor
+            addPlatform(19, 620, 279, 10);      // left lower floor
+            addPlatform(19, 620, 10, 162);       // left lower wall
+            addPlatform(294, 620, 10, 90);       // inner left vertical wall
+            addPlatform(294, 706, 105, 10);      // lower center platform
+            addPlatform(19, 778, 483, 10);       // bottom interior floor
 
-            addPlatform(0, 520, 398, 4);        // left midroom floor
-            addPlatform(498, 520, 502, 4);      // right midroom floor
-            addPlatform(322, 485, 77, 4);       // central mid ledge
-            addPlatform(395, 485, 4, 225);      // central divider wall
-            addPlatform(498, 492, 4, 290);      // right vertical wall
+            addPlatform(321, 485, 77, 10);       // central mid ledge
+            addPlatform(395, 485, 10, 225);      // central divider wall
+            addPlatform(498, 492, 10, 290);      // right vertical wall
             
             addPlatform(398, 627,43 ,20);       //small lower left platform
             addPlatform(462, 546, 40, 15);      // small lower right platform
 
-            addPlatform(0, 446, 326, 4);        // left upper platform
-            addPlatform(598, 444, 402, 6);      // right upper platform
+            addPlatform(0, 446, 326, 10);        // left upper platform
+            addPlatform(598, 444, 402, 10);      // right upper platform
             addPlatform(228, 347, 95, 19);      // central right platform
             addPlatform(604, 353, 96, 19);      // upper right platform
             addPlatform(77, 319, 84, 22);       // lower left mid platform
@@ -172,6 +170,15 @@ public class GamePanel extends JPanel implements KeyListener {
         });
 
         loadRoom(1);
+    }
+    
+    private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
+        registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, () -> {
+            // Add platforms to match the red collision lines in Room1Shell.png
+            
+        });
+
+        loadRoom(2);
     }
 
     private void registerRoom(int roomId, String backgroundResource, int playerSpawnX, int playerSpawnY, Runnable roomSetup) {
