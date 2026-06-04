@@ -49,6 +49,7 @@ public class GamePanel extends JPanel implements KeyListener {
     private final int MAX_HEALTH = 5; // maximum player health
     private int collectedCount = 0; // how many collectibles the player has picked up
     private int currentRoom = 0; // current room ID for room switching
+    private boolean roomSwitchingEnabled = false; // prevent room changes until startup completes
     private final Map<Integer, RoomDefinition> roomDefinitions = new HashMap<>();
     private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
     private int hurtCooldown = 0; // prevents repeated damage in the same contact
@@ -135,6 +136,7 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         startInRoom(1);
+        javax.swing.SwingUtilities.invokeLater(() -> roomSwitchingEnabled = true);
 
         // Start game loop
         startGameLoop();
@@ -245,6 +247,10 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private int switchRoomIfNeeded(int newX) {
+        if (!roomSwitchingEnabled) {
+            return newX;
+        }
+
         RoomDefinition current = roomDefinitions.get(currentRoom);
         if (current == null) {
             return newX;
