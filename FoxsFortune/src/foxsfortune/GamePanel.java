@@ -130,11 +130,20 @@ public class GamePanel extends JPanel implements KeyListener {
             System.err.println("Warning: BiggerFoxModel.png not found in classpath resources.");
         }
 
-        // Load the background image from the new images/backgrounds folder.
-        URL bgURL = FoxsFortune.class.getResource("/foxsfortune/images/backgrounds/Room1Shell.png");
+        initializeRoom1("/foxsfortune/images/backgrounds/Room1Shell.png", 140, 778 - playerHeight);
+
+        // Start game loop
+        startGameLoop();
+        // calls the method that starts updating the game
+    }
+
+    private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
+        // Load the background image for room 1
+        URL bgURL = FoxsFortune.class.getResource(backgroundResource);
         if (bgURL == null) {
             try {
-                java.io.File fallbackBg = new java.io.File("FoxsFortune/src/foxsfortune/images/backgrounds/Room1Shell.png");
+                String fallbackPath = backgroundResource.startsWith("/") ? backgroundResource.substring(1) : backgroundResource;
+                java.io.File fallbackBg = new java.io.File("FoxsFortune/src/" + fallbackPath);
                 if (fallbackBg.exists()) {
                     bgURL = fallbackBg.toURI().toURL();
                 }
@@ -150,51 +159,34 @@ public class GamePanel extends JPanel implements KeyListener {
                 System.err.println("Error reading background image: " + e);
             }
         } else {
-            System.err.println("Warning: Room1Shell.png not found in classpath resources.");
+            System.err.println("Warning: " + backgroundResource + " not found in classpath resources.");
         }
 
         // Add platforms to match the red collision lines in Room1Shell.png
-        // Bottom interior floor and walls
         addPlatform(19, 620, 279, 4);      // left lower floor
         addPlatform(19, 620, 4, 162);       // left lower wall
         addPlatform(294, 620, 4, 90);       // inner left vertical wall
         addPlatform(294, 706, 105, 4);      // lower center platform
         addPlatform(19, 778, 483, 4);       // bottom interior floor
 
-        // Midroom floors and divider
         addPlatform(0, 520, 398, 4);        // left midroom floor
         addPlatform(498, 520, 502, 4);      // right midroom floor
         addPlatform(322, 492, 77, 4);       // central mid ledge
         addPlatform(395, 485, 4, 225);      // central divider wall
         addPlatform(498, 492, 4, 290);      // right vertical wall
 
-        // Upper interior platforms
         addPlatform(0, 446, 326, 4);        // left upper platform
         addPlatform(598, 444, 402, 6);      // right upper platform
         addPlatform(228, 347, 95, 19);      // central right platform
         addPlatform(604, 353, 96, 19);      // upper right platform
         addPlatform(77, 319, 84, 22);       // lower left mid platform
 
-        // Floating top platforms
         addPlatform(113, 220, 42, 15);      // top left small ledge
         addPlatform(909, 240, 33, 16);      // top right small ledge
         addPlatform(255, 255, 56, 13);      // upper left mid platform
         addPlatform(740, 297, 64, 16);      // upper right mid platform
 
-        // Start the player inside the lower room box
-        setPlayerSpawn(140, 778 - playerHeight);
-
-        addCollectible(260, 700, 1);
-        addCollectible(520, 560, 2);
-        addCollectible(130, 580, 3);
-        addHealthPickup(380, 700);
-        addDoubleJumpItem(700, 700);
-        // no starting enemy; begin the level empty
-        addCheckpoint(520, 600, 20, 20);
-
-        // Start game loop
-        startGameLoop();
-        // calls the method that starts updating the game
+        setPlayerSpawn(playerSpawnX, playerSpawnY);
     }
 
     private void startGameLoop() {
