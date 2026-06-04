@@ -11,8 +11,10 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
@@ -46,6 +48,8 @@ public class GamePanel extends JPanel implements KeyListener {
     private final int ENEMY_SIZE = 30; // enemy pixel size
     private final int MAX_HEALTH = 5; // maximum player health
     private int collectedCount = 0; // how many collectibles the player has picked up
+    private int currentRoom = 0; // current room ID for room switching
+    private final Map<Integer, RoomDefinition> roomDefinitions = new HashMap<>();
     private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
     private int hurtCooldown = 0; // prevents repeated damage in the same contact
     private int respawnProtection = 0; // temporary invulnerability after respawn
@@ -138,7 +142,67 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
-        // Load the background image for room 1
+        registerRoom(1, backgroundResource, playerSpawnX, playerSpawnY, () -> {
+            // Add platforms to match the red collision lines in Room1Shell.png
+            addPlatform(19, 620, 279, 4);      // left lower floor
+            addPlatform(19, 620, 4, 162);       // left lower wall
+            addPlatform(294, 620, 4, 90);       // inner left vertical wall
+            addPlatform(294, 706, 105, 4);      // lower center platform
+            addPlatform(19, 778, 483, 4);       // bottom interior floor
+
+            addPlatform(0, 520, 398, 4);        // left midroom floor
+            addPlatform(498, 520, 502, 4);      // right midroom floor
+            addPlatform(322, 485, 77, 4);       // central mid ledge
+            addPlatform(395, 485, 4, 225);      // central divider wall
+            addPlatform(498, 492, 4, 290);      // right vertical wall
+            
+            addPlatform(398, 627,43 ,20);       //small lower left platform
+            addPlatform(462, 546, 40, 15);      // small lower right platform
+
+            addPlatform(0, 446, 326, 4);        // left upper platform
+            addPlatform(598, 444, 402, 6);      // right upper platform
+            addPlatform(228, 347, 95, 19);      // central right platform
+            addPlatform(604, 353, 96, 19);      // upper right platform
+            addPlatform(77, 319, 84, 22);       // lower left mid platform
+
+            addPlatform(113, 220, 42, 15);      // top left small ledge
+            addPlatform(909, 240, 33, 16);      // top right small ledge
+            addPlatform(255, 255, 56, 13);      // upper left mid platform
+            addPlatform(740, 297, 64, 16);      // upper right mid platform
+        });
+
+        loadRoom(1);
+    }
+
+    private void registerRoom(int roomId, String backgroundResource, int playerSpawnX, int playerSpawnY, Runnable roomSetup) {
+        roomDefinitions.put(roomId, new RoomDefinition(backgroundResource, playerSpawnX, playerSpawnY, roomSetup));
+    }
+
+    private void loadRoom(int roomId) {
+        RoomDefinition room = roomDefinitions.get(roomId);
+        if (room == null) {
+            System.err.println("Room " + roomId + " is not registered.");
+            return;
+        }
+
+        currentRoom = roomId;
+        platforms.clear();
+        checkpoints.clear();
+        collectibles.clear();
+        enemies.clear();
+        backgroundImage = null;
+
+        loadBackground(room.backgroundResource);
+        room.roomSetup.run();
+        setPlayerSpawn(room.playerSpawnX, room.playerSpawnY);
+        checkpointActive = false;
+        checkpointX = room.playerSpawnX;
+        checkpointY = room.playerSpawnY;
+        player.setYVelocity(0);
+        player.setMoving(false);
+    }
+
+    private void loadBackground(String backgroundResource) {
         URL bgURL = FoxsFortune.class.getResource(backgroundResource);
         if (bgURL == null) {
             try {
@@ -161,32 +225,20 @@ public class GamePanel extends JPanel implements KeyListener {
         } else {
             System.err.println("Warning: " + backgroundResource + " not found in classpath resources.");
         }
+    }
 
-        // Add platforms to match the red collision lines in Room1Shell.png
-        addPlatform(19, 620, 279, 4);      // left lower floor
-        addPlatform(19, 620, 4, 162);       // left lower wall
-        addPlatform(294, 620, 4, 90);       // inner left vertical wall
-        addPlatform(294, 706, 105, 4);      // lower center platform
-        addPlatform(19, 778, 483, 4);       // bottom interior floor
+    private static class RoomDefinition {
+        final String backgroundResource;
+        final int playerSpawnX;
+        final int playerSpawnY;
+        final Runnable roomSetup;
 
-        addPlatform(0, 520, 398, 4);        // left midroom floor
-        addPlatform(498, 520, 502, 4);      // right midroom floor
-        addPlatform(322, 485, 77, 4);       // central mid ledge
-        addPlatform(395, 485, 4, 225);      // central divider wall
-        addPlatform(498, 492, 4, 290);      // right vertical wall
-
-        addPlatform(0, 446, 326, 4);        // left upper platform
-        addPlatform(598, 444, 402, 6);      // right upper platform
-        addPlatform(228, 347, 95, 19);      // central right platform
-        addPlatform(604, 353, 96, 19);      // upper right platform
-        addPlatform(77, 319, 84, 22);       // lower left mid platform
-
-        addPlatform(113, 220, 42, 15);      // top left small ledge
-        addPlatform(909, 240, 33, 16);      // top right small ledge
-        addPlatform(255, 255, 56, 13);      // upper left mid platform
-        addPlatform(740, 297, 64, 16);      // upper right mid platform
-
-        setPlayerSpawn(playerSpawnX, playerSpawnY);
+        RoomDefinition(String backgroundResource, int playerSpawnX, int playerSpawnY, Runnable roomSetup) {
+            this.backgroundResource = backgroundResource;
+            this.playerSpawnX = playerSpawnX;
+            this.playerSpawnY = playerSpawnY;
+            this.roomSetup = roomSetup;
+        }
     }
 
     private void startGameLoop() {
