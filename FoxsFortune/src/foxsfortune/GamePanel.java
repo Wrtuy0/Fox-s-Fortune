@@ -148,14 +148,17 @@ public class GamePanel extends JPanel implements KeyListener {
             // Add platforms to match the red collision lines in Room1Shell.png
             addPlatform(19, 620, 279, 10);      // left lower floor
             addPlatform(19, 620, 10, 162);       // left lower wall
-            addPlatform(450, 715, 10, 65); 
-            addPlatform(450, 715, 55, 10); 
             addPlatform(294, 620, 10, 90);       // inner left vertical wall
             addPlatform(294, 706, 105, 10);      // lower center platform
             addPlatform(19, 778, 483, 10);       // bottom interior floor
 
             addPlatform(321, 485, 77, 10);       // central mid ledge
             addPlatform(395, 485, 10, 225);      // central divider wall
+            addPlatform(320, 447, 10, 45); 
+            addPlatform(595, 444, 10, 52);
+            addPlatform(498, 490, 107, 10);
+            addPlatform(505, 520, 500, 10);
+            addPlatform(0, 520, 400, 10);
             addPlatform(498, 492, 10, 290);      // right vertical wall
             
             addPlatform(398, 627,43 ,20);       //small lower left platform
@@ -171,6 +174,10 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(909, 240, 33, 16);      // top right small ledge
             addPlatform(255, 255, 56, 13);      // upper left mid platform
             addPlatform(740, 297, 64, 16);      // upper right mid platform
+            
+            addPlatform(890, 343, 93, 16);      // mid sky box
+            
+            
         });
     }
     
