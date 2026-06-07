@@ -22,7 +22,9 @@ import javax.swing.JPanel;
 /**
  * Game panel for rendering and managing game logic.
  *
- * @author Reese Sanders, Logan Saywich and Aws Tariq and Copiliot AI for logic and structure assistance (I belive the the specific model used was Raptor Mini, but I am not sure)
+ * @author Reese Sanders, Logan Saywich and Aws Tariq and Copiliot AI for logic
+ * and structure assistance (I belive the the specific model used was Raptor
+ * Mini, but I am not sure)
  */
 public class GamePanel extends JPanel implements KeyListener {
 
@@ -102,7 +104,7 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setName("Fox");
         // gives the player a name
         keysPressed = new HashSet<>();
-         // creates the set that stores pressed keys
+        // creates the set that stores pressed keys
         running = true;
         player.setXPos(100);
         player.setYPos(100);
@@ -154,14 +156,14 @@ public class GamePanel extends JPanel implements KeyListener {
 
             addPlatform(321, 485, 77, 10);       // central mid ledge
             addPlatform(395, 485, 10, 225);      // central divider wall
-            addPlatform(320, 447, 10, 45); 
+            addPlatform(320, 447, 10, 45);
             addPlatform(595, 444, 10, 52);
             addPlatform(498, 490, 107, 10);
             addPlatform(505, 520, 500, 10);
             addPlatform(0, 520, 400, 10);
             addPlatform(498, 492, 10, 290);      // right vertical wall
-            
-            addPlatform(398, 627,43 ,20);       //small lower left platform
+
+            addPlatform(398, 627, 43, 20);       //small lower left platform
             addPlatform(462, 546, 40, 15);      // small lower right platform
 
             addPlatform(0, 446, 326, 10);        // left upper platform
@@ -174,17 +176,16 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(909, 240, 33, 16);      // top right small ledge
             addPlatform(255, 255, 56, 13);      // upper left mid platform
             addPlatform(740, 297, 64, 16);      // upper right mid platform
-            
+
             addPlatform(890, 343, 93, 16);      // mid sky box
-            
-            
+
         });
     }
-    
+
     private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
         registerRoom(2, backgroundResource, playerSpawnX, playerSpawnY, 1, 0, () -> {
             // Add platforms to match the right-side Room2Shell.png layout
-            addPlatform(0, 820, 1000, 4);        // base floor across room
+            /* addPlatform(0, 820, 1000, 4);        // base floor across room
             addPlatform(0, 640, 300, 4);         // left mid floor
             addPlatform(350, 720, 650, 4);       // lower right floor
             addPlatform(70, 525, 160, 4);        // left upper ledge
@@ -193,7 +194,42 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(940, 520, 4, 380);       // right wall
             // left room boundary removed so the player can traverse back to room 1 at the screen edge
             addPlatform(200, 330, 130, 4);       // mid left small platform
-            addPlatform(560, 260, 240, 4);       // top right small platform
+            addPlatform(560, 260, 240, 4);       // top right small platform 
+             */
+            addPlatform(114, 289, 42, 17);    // top left small
+            addPlatform(615, 299, 39, 17);    // top middle small
+            addPlatform(315, 324, 67, 17);    // upper left/mid small
+            addPlatform(839, 327, 90, 23);    // upper right small
+            addPlatform(75, 357, 108, 23);    // left floating
+            addPlatform(553, 367, 126, 25);   // middle floating
+            addPlatform(0, 447, 128, 10);     // far left top ledge
+            addPlatform(164, 447, 525, 10);   // big middle top ledge
+            addPlatform(778, 447, 222, 10);   // right room top ledge
+            addPlatform(690, 487, 38, 18);    // small right tab, tightened
+            addPlatform(744, 570, 38, 20);    // middle-right tab, tightened
+            addPlatform(333, 582, 361, 10);   // inner middle ledge
+            addPlatform(690, 647, 93, 10);    // right inner ledge
+            addPlatform(470, 659, 92, 25);    // small lower middle platform
+            addPlatform(330, 652, 60, 20);    // small lower left platform
+            addPlatform(164, 665, 167, 10);    // small lower left platform
+            addPlatform(690, 716, 295, 10);   // lower right floor
+            addPlatform(200, 742, 497, 10);   // long bottom-middle red floor
+            addPlatform(124, 447, 10, 400);   // left tall wall
+            addPlatform(164, 447, 10, 225);   // inner left wall
+            addPlatform(329, 582, 10, 90);    // middle step wall
+            addPlatform(689, 447, 10, 139);   // upper middle-right wall
+            addPlatform(689, 647, 10, 73);    // lower middle-right wall
+            addPlatform(778, 447, 10, 204);   // right room left wall
+            addPlatform(690, 720, 10, 75);   // right tall wall
+            addPlatform(974, 724, 10, 62);    // far right small wall
+            addPlatform(195, 742, 10, 43);    // far right small wall
+            addPlatform(133, 780, 33, 10);     // small top red line
+            addPlatform(162, 784, 10, 64);     // right vertical side
+            addPlatform(200, 785, 490, 10);    // long red line across middle
+            addPlatform(123, 844, 339, 10);    // lower left red floor
+            addPlatform(520, 844, 480, 10);    // lower right red floor
+            addPlatform(458, 844, 10, 52);     // left side of gap
+            addPlatform(520, 844, 10, 52);     // right side of gap
         });
     }
 
@@ -301,6 +337,7 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private static class RoomDefinition {
+
         final String backgroundResource;
         final int playerSpawnX;
         final int playerSpawnY;
@@ -377,8 +414,11 @@ public class GamePanel extends JPanel implements KeyListener {
             xVelocity = 0;
         }
         // update facing based on horizontal input
-        if (xVelocity > 0) facingRight = true;
-        else if (xVelocity < 0) facingRight = false;
+        if (xVelocity > 0) {
+            facingRight = true;
+        } else if (xVelocity < 0) {
+            facingRight = false;
+        }
 
         int previousTop = player.getYPos();
         int previousBottom = previousTop + playerHeight;
@@ -419,7 +459,6 @@ public class GamePanel extends JPanel implements KeyListener {
         if (!isAlive) {
             return;
         }
-
 
         // Apply gravity
         yVelocity += GRAVITY;
@@ -497,7 +536,9 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         // Handle attack timers and collisions
-        if (attackCooldown > 0) attackCooldown--;
+        if (attackCooldown > 0) {
+            attackCooldown--;
+        }
         if (attackActive) {
             attackTimer--;
             // compute attack hitbox
@@ -871,6 +912,7 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private static class EnemyEntity extends Enemy {
+
         int x;
         int y;
         final int width;
@@ -931,6 +973,7 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private static class Platform {
+
         final int x;
         final int y;
         final int width;
