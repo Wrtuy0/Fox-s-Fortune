@@ -159,8 +159,6 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(320, 447, 10, 45);
             addPlatform(595, 444, 10, 52);
             addPlatform(498, 490, 107, 10);
-            addPlatform(505, 520, 500, 10);
-            addPlatform(0, 520, 400, 10);
             addPlatform(498, 492, 10, 290);      // right vertical wall
 
             addPlatform(398, 627, 43, 20);       //small lower left platform
