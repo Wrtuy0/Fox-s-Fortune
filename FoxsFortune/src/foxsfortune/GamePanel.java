@@ -257,6 +257,10 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void loadRoom(int roomId) {
+        loadRoom(roomId, false);
+    }
+
+    private void loadRoom(int roomId, boolean preservePlayerState) {
         RoomDefinition room = roomDefinitions.get(roomId);
         if (room == null) {
             System.err.println("Room " + roomId + " is not registered.");
@@ -272,12 +276,16 @@ public class GamePanel extends JPanel implements KeyListener {
 
         loadBackground(room.backgroundResource);
         room.roomSetup.run();
-        setPlayerSpawn(room.playerSpawnX, room.playerSpawnY);
+        spawnX = room.playerSpawnX;
+        spawnY = room.playerSpawnY;
         checkpointActive = false;
         checkpointX = room.playerSpawnX;
         checkpointY = room.playerSpawnY;
-        player.setYVelocity(0);
-        player.setMoving(false);
+        if (!preservePlayerState) {
+            setPlayerSpawn(room.playerSpawnX, room.playerSpawnY);
+            player.setYVelocity(0);
+            player.setMoving(false);
+        }
     }
 
     private int switchRoomIfNeeded(int newX) {
@@ -295,24 +303,48 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         if (newX >= getWidth() - playerWidth && current.rightRoomId != 0) {
-            loadRoom(current.rightRoomId);
-            int landingX = 10;
-            int landingY = getRoomTransitionLandingY(landingX);
+            int savedY = player.getYPos();
+            double savedYVelocity = player.getYVelocity();
+            boolean savedCanJump = canJump;
+            boolean savedHasDoubleJumped = hasDoubleJumped;
+            boolean preserveVerticalState = savedYVelocity != 0;
+            loadRoom(current.rightRoomId, true);
+            int landingX = findBestLandingX(10, 1, 120);
+            int landingY = preserveVerticalState
+                    ? Math.max(0, Math.min(savedY, getHeight() - playerHeight))
+                    : getRoomTransitionLandingY(landingX);
             player.setXPos(landingX);
             player.setYPos(landingY);
-            player.setYVelocity(0);
-            canJump = true;
-            hasDoubleJumped = false;
+            player.setYVelocity(preserveVerticalState ? savedYVelocity : 0);
+            if (preserveVerticalState) {
+                canJump = savedCanJump;
+                hasDoubleJumped = savedHasDoubleJumped;
+            } else {
+                canJump = true;
+                hasDoubleJumped = false;
+            }
             return landingX;
         } else if (newX <= 0 && current.leftRoomId != 0) {
-            loadRoom(current.leftRoomId);
-            int landingX = getWidth() - playerWidth - 10;
-            int landingY = getRoomTransitionLandingY(landingX);
+            int savedY = player.getYPos();
+            double savedYVelocity = player.getYVelocity();
+            boolean savedCanJump = canJump;
+            boolean savedHasDoubleJumped = hasDoubleJumped;
+            boolean preserveVerticalState = savedYVelocity != 0;
+            loadRoom(current.leftRoomId, true);
+            int landingX = findBestLandingX(getWidth() - playerWidth - 10, -1, 120);
+            int landingY = preserveVerticalState
+                    ? Math.max(0, Math.min(savedY, getHeight() - playerHeight))
+                    : getRoomTransitionLandingY(landingX);
             player.setXPos(landingX);
             player.setYPos(landingY);
-            player.setYVelocity(0);
-            canJump = true;
-            hasDoubleJumped = false;
+            player.setYVelocity(preserveVerticalState ? savedYVelocity : 0);
+            if (preserveVerticalState) {
+                canJump = savedCanJump;
+                hasDoubleJumped = savedHasDoubleJumped;
+            } else {
+                canJump = true;
+                hasDoubleJumped = false;
+            }
             return landingX;
         }
 
@@ -350,6 +382,11 @@ public class GamePanel extends JPanel implements KeyListener {
             return Math.max(0, platformTop - playerHeight);
         }
 
+        int nearbyPlatformTop = findLowestPlatformTopNearX(x, playerWidth, 120);
+        if (nearbyPlatformTop >= 0) {
+            return Math.max(0, nearbyPlatformTop - playerHeight);
+        }
+
         int maxY = getHeight() > playerHeight ? getHeight() - playerHeight : GROUND_LEVEL;
         return Math.min(GROUND_LEVEL, maxY);
     }
@@ -363,6 +400,50 @@ public class GamePanel extends JPanel implements KeyListener {
             }
         }
         return bestY == Integer.MIN_VALUE ? -1 : bestY;
+    }
+
+    private int findLowestPlatformTopNearX(int x, int width, int radius) {
+        int bestY = Integer.MIN_VALUE;
+        int minX = Math.max(0, x - radius);
+        int maxX = Math.min(getWidth() - width, x + radius);
+        for (int candidateX = minX; candidateX <= maxX; candidateX++) {
+            int platformTop = findLowestPlatformTopAtX(candidateX, width);
+            if (platformTop >= 0) {
+                bestY = Math.max(bestY, platformTop);
+            }
+        }
+        return bestY == Integer.MIN_VALUE ? -1 : bestY;
+    }
+
+    private int findSafeLandingX(int startX, int direction) {
+        int maxOffset = 120;
+        int bestX = startX;
+        int bestY = Integer.MIN_VALUE;
+        for (int offset = 0; offset <= maxOffset; offset++) {
+            int candidateX = startX + offset * direction;
+            candidateX = Math.max(0, Math.min(getWidth() - playerWidth, candidateX));
+            int landingY = getRoomTransitionLandingY(candidateX);
+            if (landingY > bestY) {
+                bestY = landingY;
+                bestX = candidateX;
+            }
+        }
+        return bestX;
+    }
+
+    private int findBestLandingX(int startX, int direction, int radius) {
+        int bestX = startX;
+        int bestY = Integer.MIN_VALUE;
+        int minX = Math.max(0, startX - radius);
+        int maxX = Math.min(getWidth() - playerWidth, startX + radius);
+        for (int candidateX = minX; candidateX <= maxX; candidateX++) {
+            int landingY = getRoomTransitionLandingY(candidateX);
+            if (landingY > bestY) {
+                bestY = landingY;
+                bestX = candidateX;
+            }
+        }
+        return bestX;
     }
 
     private static class RoomDefinition {
