@@ -36,7 +36,6 @@ public class FoxsFortune extends JFrame {
         // makes the window show up
         gamePanel.requestFocusInWindow();
         // ensure the game panel has keyboard focus for input
-        userManul();
     }
 
     /**
@@ -44,8 +43,5 @@ public class FoxsFortune extends JFrame {
      */
     public static void main(String[] args) {// main method where the program starts
         new FoxsFortune();
-    }
-    public static void userManul(){
-        System.out.print("A:Move left\nW:jump up\nS:Move down\nD:Move right\nArrow Keys\n^ (Up Arrow):jump up\nv (Down Arrow):Move down\n< (Left Arrow):Move left\n> (Right Arrow):Move right\nZ:Cast long-range ability\nX:Cast standard ability\nC:Execute basic attack");
     }
 }

@@ -164,8 +164,8 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(398, 627, 43, 20);       //small lower left platform
             addPlatform(462, 546, 40, 15);      // small lower right platform
 
-            addPlatform(0, 446, 326, 10);        // left upper platform
-            addPlatform(598, 444, 402, 10);      // right upper platform
+            addPlatform(0, 447, 326, 10);        // left upper platform
+            addPlatform(598, 445, 402, 10);      // right upper platform
             addPlatform(228, 347, 95, 19);      // central right platform
             addPlatform(604, 353, 96, 19);      // upper right platform
             addPlatform(77, 319, 84, 22);       // lower left mid platform
@@ -224,7 +224,7 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(133, 780, 33, 10);     // small top red line
             addPlatform(162, 784, 10, 64);     // right vertical side
             addPlatform(200, 785, 490, 10);    // long red line across middle
-            addPlatform(123, 844, 339, 10);    // lower left red floor
+            addPlatform(124, 844, 338, 10);    // lower left red floor
             addPlatform(520, 844, 480, 10);    // lower right red floor
             addPlatform(458, 844, 10, 52);     // left side of gap
             addPlatform(520, 844, 10, 52);     // right side of gap
@@ -534,6 +534,18 @@ public class GamePanel extends JPanel implements KeyListener {
         int previousBottom = previousTop + playerHeight;
         int previousLeft = player.getXPos();
         int previousRight = previousLeft + playerWidth;
+
+        boolean wasSupported = previousBottom == GROUND_LEVEL;
+        for (Platform platform : platforms) {
+            boolean horizontalOverlap = previousRight > platform.x && previousLeft < platform.x + platform.width;
+            if (horizontalOverlap && previousBottom == platform.y) {
+                wasSupported = true;
+                break;
+            }
+        }
+        if (!wasSupported) {
+            canJump = false;
+        }
 
         // Apply horizontal movement first
         newX += (int) xVelocity;
