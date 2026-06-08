@@ -235,7 +235,7 @@ public class GamePanel extends JPanel implements KeyListener {
 
     private void initializeRooms() {
         initializeRoom1("/foxsfortune/images/backgrounds/Room1Shell.png", 140, 778 - playerHeight);
-        initializeRoom2("/foxsfortune/images/backgrounds/Room2Shell.png", 60, 778 - playerHeight);
+        initializeRoom2("/foxsfortune/images/backgrounds/Room2Shell.png", 20, 447 - playerHeight);
     }
 
     private void startInRoom(int roomId) {
@@ -298,14 +298,24 @@ public class GamePanel extends JPanel implements KeyListener {
 
         if (newX >= getWidth() - playerWidth && current.rightRoomId != 0) {
             loadRoom(current.rightRoomId);
-            player.setXPos(0);
-            player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
-            return 0;
+            int landingX = 10;
+            int landingY = getRoomTransitionLandingY(landingX);
+            player.setXPos(landingX);
+            player.setYPos(landingY);
+            player.setYVelocity(0);
+            canJump = true;
+            hasDoubleJumped = false;
+            return landingX;
         } else if (newX <= 0 && current.leftRoomId != 0) {
             loadRoom(current.leftRoomId);
-            player.setXPos(getWidth() - playerWidth);
-            player.setYPos(Math.min(player.getYPos(), getHeight() - playerHeight));
-            return getWidth() - playerWidth;
+            int landingX = getWidth() - playerWidth - 10;
+            int landingY = getRoomTransitionLandingY(landingX);
+            player.setXPos(landingX);
+            player.setYPos(landingY);
+            player.setYVelocity(0);
+            canJump = true;
+            hasDoubleJumped = false;
+            return landingX;
         }
 
         return newX;
@@ -334,6 +344,27 @@ public class GamePanel extends JPanel implements KeyListener {
         } else {
             System.err.println("Warning: " + backgroundResource + " not found in classpath resources.");
         }
+    }
+
+    private int getRoomTransitionLandingY(int x) {
+        int platformTop = findLowestPlatformTopAtX(x, playerWidth);
+        if (platformTop >= 0) {
+            return Math.max(0, platformTop - playerHeight);
+        }
+
+        int maxY = getHeight() > playerHeight ? getHeight() - playerHeight : GROUND_LEVEL;
+        return Math.min(GROUND_LEVEL, maxY);
+    }
+
+    private int findLowestPlatformTopAtX(int x, int width) {
+        int bestY = Integer.MIN_VALUE;
+        for (Platform platform : platforms) {
+            boolean overlapsHorizontally = x + width > platform.x && x < platform.x + platform.width;
+            if (overlapsHorizontally) {
+                bestY = Math.max(bestY, platform.y);
+            }
+        }
+        return bestY == Integer.MIN_VALUE ? -1 : bestY;
     }
 
     private static class RoomDefinition {
@@ -622,7 +653,13 @@ public class GamePanel extends JPanel implements KeyListener {
         }
 
         // Handle room transitions at the screen edges
+        int previousRoom = currentRoom;
         newX = switchRoomIfNeeded(newX);
+        if (previousRoom != currentRoom) {
+            // Room changed; preserve the position and physics state that the new room load established.
+            newY = player.getYPos();
+            yVelocity = player.getYVelocity();
+        }
 
         // Bounds checking (horizontal)
         newX = Math.max(0, Math.min(newX, getWidth() - playerWidth));
