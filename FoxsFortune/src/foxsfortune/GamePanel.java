@@ -177,6 +177,7 @@ public class GamePanel extends JPanel implements KeyListener {
 
             addPlatform(890, 343, 93, 16);      // mid sky box
 
+            addEnemy(200, 600, 100, 100, 100,19, 100); 
         });
     }
 
@@ -904,6 +905,10 @@ public class GamePanel extends JPanel implements KeyListener {
 
     private void addEnemy(int x, int y, int width, int height, int patrolMinX, int patrolMaxX, int dx) {
         enemies.add(new EnemyEntity(x, y, width, height, patrolMinX, patrolMaxX, dx));
+    }
+
+    private void addGroundEnemySpawnNode(int x, int y) {
+        spawnEnemy(EnemyType.GROUND, x, y, ENEMY_SIZE, ENEMY_SIZE, null, 1);
     }
 
     public void spawnEnemy(EnemyType enemyType, int x, int y, int width, int height, List<Point> path, int speed) {
