@@ -232,8 +232,8 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void initializeRooms() {
-        initializeRoom1("/foxsfortune/images/backgrounds/Room1Shell.png", 140, 778 - playerHeight);
-        initializeRoom2("/foxsfortune/images/backgrounds/Room2Shell.png", 20, 447 - playerHeight);
+        initializeRoom1("/foxsfortune/images/backgrounds/Room1Final.png", 140, 778 - playerHeight);
+        initializeRoom2("/foxsfortune/images/backgrounds/Room2Final.png", 20, 447 - playerHeight);
     }
 
     private void startInRoom(int roomId) {
