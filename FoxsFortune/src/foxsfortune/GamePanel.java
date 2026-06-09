@@ -181,7 +181,7 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void initializeRoom2(String backgroundResource, int playerSpawnX, int playerSpawnY) {
-        registerRoom(2, backgroundResource, playerSpawnX, playerSpawnY, 1, 0, () -> {
+        registerRoom(2, backgroundResource, playerSpawnX, playerSpawnY, 1, 3, () -> {
             // Add platforms to match the right-side Room2Shell.png layout
             /* addPlatform(0, 820, 1000, 4);        // base floor across room
             addPlatform(0, 640, 300, 4);         // left mid floor
@@ -231,9 +231,22 @@ public class GamePanel extends JPanel implements KeyListener {
         });
     }
 
+    private void initializeRoom3(String backgroundResource, int playerSpawnX, int playerSpawnY) {
+        registerRoom(3, backgroundResource, playerSpawnX, playerSpawnY, 2, 0, () -> {
+            addPlatform(0, 780, 1000, 20);       // bottom floor
+            addPlatform(120, 690, 180, 14);      // lower mid ledge
+            addPlatform(340, 610, 160, 14);      // upper mid ledge
+            addPlatform(560, 520, 180, 14);      // higher ledge
+            addPlatform(780, 430, 160, 14);      // top-right ledge
+            addPlatform(860, 350, 90, 14);       // small top platform
+            addPlatform(0, 300, 140, 14);        // left upper platform
+        });
+    }
+
     private void initializeRooms() {
         initializeRoom1("/foxsfortune/images/backgrounds/Room1Final.png", 140, 778 - playerHeight);
         initializeRoom2("/foxsfortune/images/backgrounds/Room2Final.png", 20, 447 - playerHeight);
+        initializeRoom3("/foxsfortune/images/backgrounds/Room3Final.png", 20, 447 - playerHeight);
     }
 
     private void startInRoom(int roomId) {
@@ -309,7 +322,7 @@ public class GamePanel extends JPanel implements KeyListener {
             boolean savedHasDoubleJumped = hasDoubleJumped;
             boolean preserveVerticalState = savedYVelocity != 0;
             loadRoom(current.rightRoomId, true);
-            int landingX = findBestLandingX(10, 1, 120);
+            int landingX = findBestLandingX(10, 1, 12);
             int landingY = preserveVerticalState
                     ? Math.max(0, Math.min(savedY, getHeight() - playerHeight))
                     : getRoomTransitionLandingY(landingX);
@@ -331,7 +344,7 @@ public class GamePanel extends JPanel implements KeyListener {
             boolean savedHasDoubleJumped = hasDoubleJumped;
             boolean preserveVerticalState = savedYVelocity != 0;
             loadRoom(current.leftRoomId, true);
-            int landingX = findBestLandingX(getWidth() - playerWidth - 10, -1, 120);
+            int landingX = findBestLandingX(getWidth() - playerWidth - 10, -1, 12);
             int landingY = preserveVerticalState
                     ? Math.max(0, Math.min(savedY, getHeight() - playerHeight))
                     : getRoomTransitionLandingY(landingX);
