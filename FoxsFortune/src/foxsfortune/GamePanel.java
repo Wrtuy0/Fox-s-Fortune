@@ -157,7 +157,7 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(321, 485, 77, 10);       // central mid ledge
             addPlatform(395, 485, 10, 225);      // central divider wall
             addPlatform(320, 447, 10, 45);
-            addPlatform(595, 444, 10, 52);
+            addPlatform(595, 445, 10, 52);
             addPlatform(498, 490, 107, 10);
             addPlatform(498, 492, 10, 290);      // right vertical wall
 
@@ -208,7 +208,7 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(689, 447, 10, 139);   // upper middle-right wall
             addPlatform(778, 447, 10, 204);   // right room left wall
             addPlatform(690, 647, 10, 145);   // right tall wall
-            addPlatform(974, 724, 10, 62);    // far right small wall
+            addPlatform(974, 724, 10, 162);    // far right small wall
             addPlatform(195, 742, 10, 43);    // far right small wall
             addPlatform(200, 785, 490, 10);    // long red line across middle
             addPlatform(120, 844, 880, 10);    // lower left red floor
