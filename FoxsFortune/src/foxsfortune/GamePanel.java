@@ -61,6 +61,9 @@ public class GamePanel extends JPanel implements KeyListener {
     private boolean hasDoubleJumped = false; // whether the player has already used the second jump
     private boolean jumpKeyPreviouslyPressed = false; // used to detect jump key presses instead of holds
     private double xVelocity = 0; // horizontal movement speed
+    private double knockbackVelocityX = 0; // smooth horizontal push after enemy contact
+    private final double KNOCKBACK_FORCE = 9.0; // starting horizontal knockback speed
+    private final double KNOCKBACK_FRICTION = 0.72; // how quickly knockback slows down
     private boolean facingRight = true; // which way the player faces
     // Attack state
     private boolean attackActive = false;
@@ -75,6 +78,10 @@ public class GamePanel extends JPanel implements KeyListener {
     private boolean canJump = true; // a player boolean to check if the player is on solid ground before alloing jumping
     // animations
     private BufferedImage image;
+    private final BufferedImage[] walkingImages = new BufferedImage[2];
+    private int walkAnimationTick = 0;
+    private int walkAnimationFrame = 0;
+    private final int WALK_ANIMATION_FRAME_DELAY = 10;
     private BufferedImage backgroundImage;
 
     public enum EnemyType {
@@ -109,32 +116,14 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setXPos(100);
         player.setYPos(100);
         // makes the game loop allowed to run
-        // import the player's model from classpath resources
-        URL foxURL = FoxsFortune.class.getResource("/foxsfortune/images/player models/BiggerFoxModel.png");
-        if (foxURL == null) {
-            // Fallback for running directly from the project directory during development.
-            try {
-                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/images/player models/BiggerFoxModel.png");
-                if (fallbackFile.exists()) {
-                    foxURL = fallbackFile.toURI().toURL();
-                }
-            } catch (java.net.MalformedURLException e) {
-                System.err.println("Error resolving fallback player model path: " + e);
-            }
-        }
-
-        if (foxURL != null) {
-            try {
-                image = ImageIO.read(foxURL);
-                if (image != null) {
-                    playerWidth = image.getWidth();
-                    playerHeight = image.getHeight();
-                }
-            } catch (IOException e) {
-                System.err.println("Error reading player model image: " + e);
-            }
-        } else {
-            System.err.println("Warning: BiggerFoxModel.png not found in classpath resources.");
+        // import the player's models from classpath resources
+        image = loadPlayerModel("BiggerFoxModel.png");
+        walkingImages[0] = loadPlayerModel("FoxWalkingRight1.png");
+        walkingImages[1] = loadPlayerModel("FoxWalkingRight2.png");
+        BufferedImage sizeImage = image != null ? image : getWalkingFrame();
+        if (sizeImage != null) {
+            playerWidth = sizeImage.getWidth();
+            playerHeight = sizeImage.getHeight();
         }
 
         startInRoom(1);
@@ -143,6 +132,38 @@ public class GamePanel extends JPanel implements KeyListener {
         // Start game loop
         startGameLoop();
         // calls the method that starts updating the game
+    }
+
+    private BufferedImage loadPlayerModel(String fileName) {
+        String resourcePath = "/foxsfortune/images/player models/" + fileName;
+        URL modelURL = FoxsFortune.class.getResource(resourcePath);
+        if (modelURL == null) {
+            try {
+                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/images/player models/" + fileName);
+                if (fallbackFile.exists()) {
+                    modelURL = fallbackFile.toURI().toURL();
+                }
+            } catch (java.net.MalformedURLException e) {
+                System.err.println("Error resolving fallback player model path: " + e);
+            }
+        }
+
+        if (modelURL != null) {
+            try {
+                return ImageIO.read(modelURL);
+            } catch (IOException e) {
+                System.err.println("Error reading player model image: " + e);
+            }
+        } else {
+            System.err.println("Warning: " + fileName + " not found in classpath resources.");
+        }
+        return null;
+    }
+
+    private BufferedImage getWalkingFrame() {
+        return walkingImages[walkAnimationFrame] != null
+                ? walkingImages[walkAnimationFrame]
+                : walkingImages[1 - walkAnimationFrame];
     }
 
     private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
@@ -177,7 +198,7 @@ public class GamePanel extends JPanel implements KeyListener {
 
             addPlatform(890, 343, 93, 16);      // mid sky box
 
-            addEnemy(40, 447 - ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE, 0, 326, 2);
+            addEnemy(40, 447 - ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE, 0, 326, 1);
              
         });
     }
@@ -272,6 +293,7 @@ public class GamePanel extends JPanel implements KeyListener {
         if (!preservePlayerState) {
             setPlayerSpawn(room.playerSpawnX, room.playerSpawnY);
             player.setYVelocity(0);
+            knockbackVelocityX = 0;
             player.setMoving(false);
         }
     }
@@ -601,21 +623,31 @@ public class GamePanel extends JPanel implements KeyListener {
             canJump = false;
         }
 
+        double horizontalVelocity = xVelocity + knockbackVelocityX;
+        int horizontalMove = (int) Math.round(horizontalVelocity);
+
         // Apply horizontal movement first
-        newX += (int) xVelocity;
+        newX += horizontalMove;
         for (Platform platform : platforms) {
             boolean verticalOverlap = previousBottom > platform.y && previousTop < platform.y + platform.height;
             if (!verticalOverlap) {
                 continue;
             }
 
-            if (xVelocity > 0 && previousRight <= platform.x && newX + playerWidth > platform.x) {
+            if (horizontalMove > 0 && previousRight <= platform.x && newX + playerWidth > platform.x) {
                 newX = platform.x - playerWidth;
                 xVelocity = 0;
-            } else if (xVelocity < 0 && previousLeft >= platform.x + platform.width && newX < platform.x + platform.width) {
+                knockbackVelocityX = 0;
+            } else if (horizontalMove < 0 && previousLeft >= platform.x + platform.width && newX < platform.x + platform.width) {
                 newX = platform.x + platform.width;
                 xVelocity = 0;
+                knockbackVelocityX = 0;
             }
+        }
+
+        knockbackVelocityX *= KNOCKBACK_FRICTION;
+        if (Math.abs(knockbackVelocityX) < 0.25) {
+            knockbackVelocityX = 0;
         }
 
         // Handle jumping with W/up key press
@@ -707,15 +739,9 @@ public class GamePanel extends JPanel implements KeyListener {
             boolean overlapY = newY < enemy.y + enemy.height && newY + playerHeight > enemy.y;
             if (overlapX && overlapY && hurtCooldown <= 0 && respawnProtection <= 0) {
                 hurtPlayer(1);
-                // apply knockback away from the enemy so the player isn't immediately re-hit
-                int knockbackDistance = 40; // pixels to push the player
                 int enemyCenter = enemy.x + enemy.width / 2;
                 int playerCenter = newX + playerWidth / 2;
-                if (playerCenter < enemyCenter) {
-                    newX = Math.max(0, newX - knockbackDistance);
-                } else {
-                    newX = Math.min(getWidth() - playerWidth, newX + knockbackDistance);
-                }
+                knockbackVelocityX = playerCenter < enemyCenter ? -KNOCKBACK_FORCE : KNOCKBACK_FORCE;
                 // slight upward knock to visually separate from the enemy
                 yVelocity = JUMP_FORCE / 2;
                 platformCorrection = pushPlayerOutOfPlatforms(newX, newY, yVelocity);
@@ -860,8 +886,18 @@ public class GamePanel extends JPanel implements KeyListener {
         // saves the updated y velocity
 
         // Update moving state
-        player.setMoving(!keysPressed.isEmpty());
+        player.setMoving(!keysPressed.isEmpty() || knockbackVelocityX != 0);
         // if any key is pressed, the player is counted as moving
+        if (isAlive && xVelocity != 0) {
+            walkAnimationTick++;
+            if (walkAnimationTick >= WALK_ANIMATION_FRAME_DELAY) {
+                walkAnimationTick = 0;
+                walkAnimationFrame = 1 - walkAnimationFrame;
+            }
+        } else {
+            walkAnimationTick = 0;
+            walkAnimationFrame = 0;
+        }
     }
 
     @Override
@@ -922,14 +958,19 @@ public class GamePanel extends JPanel implements KeyListener {
         // Render player
         if (player != null) {
             // only draw the player if the player exists
-            if (image != null) {
+            BufferedImage currentPlayerImage = image;
+            if (xVelocity != 0 && getWalkingFrame() != null) {
+                currentPlayerImage = getWalkingFrame();
+            }
+
+            if (currentPlayerImage != null) {
                 if (facingRight) {
-                    g2d.drawImage(image, player.getXPos(), player.getYPos(), playerWidth, playerHeight, null);
+                    g2d.drawImage(currentPlayerImage, player.getXPos(), player.getYPos(), playerWidth, playerHeight, null);
                 } else {
-                    g2d.drawImage(image,
+                    g2d.drawImage(currentPlayerImage,
                             player.getXPos() + playerWidth, player.getYPos(),
                             player.getXPos(), player.getYPos() + playerHeight,
-                            0, 0, image.getWidth(), image.getHeight(),
+                            0, 0, currentPlayerImage.getWidth(), currentPlayerImage.getHeight(),
                             null);
                 }
             } else {
@@ -1037,6 +1078,7 @@ public class GamePanel extends JPanel implements KeyListener {
             playerHealth = 0;
             isAlive = false;
             player.setYVelocity(0);
+            knockbackVelocityX = 0;
             player.setMoving(false);
         }
     }
@@ -1047,6 +1089,7 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setXPos(respawnX);
         player.setYPos(respawnY);
         player.setYVelocity(0);
+        knockbackVelocityX = 0;
         player.setMoving(false);
         playerHealth = MAX_HEALTH;
         // give a longer safety window after respawn to avoid instant damage
@@ -1090,6 +1133,7 @@ public class GamePanel extends JPanel implements KeyListener {
 
         setPlayerSpawn(spawnX, spawnY);
         player.setYVelocity(0);
+        knockbackVelocityX = 0;
         player.setMoving(false);
 
         collectibles.clear();
