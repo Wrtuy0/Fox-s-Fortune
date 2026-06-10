@@ -452,6 +452,72 @@ public class GamePanel extends JPanel implements KeyListener {
         }
     }
 
+    private boolean overlapsPlatform(int x, int y, Platform platform) {
+        return x < platform.x + platform.width
+                && x + playerWidth > platform.x
+                && y < platform.y + platform.height
+                && y + playerHeight > platform.y;
+    }
+
+    private CollisionCorrection pushPlayerOutOfPlatforms(int x, int y, double yVelocity) {
+        int correctedX = x;
+        int correctedY = y;
+        boolean landed = false;
+        boolean hitHead = false;
+
+        for (int passes = 0; passes < platforms.size(); passes++) {
+            boolean correctedThisPass = false;
+
+            for (Platform platform : platforms) {
+                if (!overlapsPlatform(correctedX, correctedY, platform)) {
+                    continue;
+                }
+
+                int pushLeft = correctedX + playerWidth - platform.x;
+                int pushRight = platform.x + platform.width - correctedX;
+                int pushUp = correctedY + playerHeight - platform.y;
+                int pushDown = platform.y + platform.height - correctedY;
+
+                int smallestPush = Math.min(Math.min(pushLeft, pushRight), Math.min(pushUp, pushDown));
+                if (smallestPush == pushUp && yVelocity >= 0) {
+                    correctedY = platform.y - playerHeight;
+                    landed = true;
+                } else if (smallestPush == pushDown && yVelocity < 0) {
+                    correctedY = platform.y + platform.height;
+                    hitHead = true;
+                } else if (pushLeft < pushRight) {
+                    correctedX = platform.x - playerWidth;
+                } else {
+                    correctedX = platform.x + platform.width;
+                }
+
+                correctedThisPass = true;
+                break;
+            }
+
+            if (!correctedThisPass) {
+                break;
+            }
+        }
+
+        return new CollisionCorrection(correctedX, correctedY, landed, hitHead);
+    }
+
+    private static class CollisionCorrection {
+
+        final int x;
+        final int y;
+        final boolean landed;
+        final boolean hitHead;
+
+        CollisionCorrection(int x, int y, boolean landed, boolean hitHead) {
+            this.x = x;
+            this.y = y;
+            this.landed = landed;
+            this.hitHead = hitHead;
+        }
+    }
+
     private void startGameLoop() {
         // this method starts the constant game loop
         gameThread = new Thread(() -> {
@@ -522,7 +588,7 @@ public class GamePanel extends JPanel implements KeyListener {
         int previousLeft = player.getXPos();
         int previousRight = previousLeft + playerWidth;
 
-        boolean wasSupported = previousBottom == GROUND_LEVEL;
+        boolean wasSupported = previousTop == GROUND_LEVEL;
         for (Platform platform : platforms) {
             boolean horizontalOverlap = previousRight > platform.x && previousLeft < platform.x + platform.width;
             if (horizontalOverlap && previousBottom == platform.y) {
@@ -601,6 +667,18 @@ public class GamePanel extends JPanel implements KeyListener {
             newBottom = newY + playerHeight;
         }
 
+        CollisionCorrection platformCorrection = pushPlayerOutOfPlatforms(newX, newY, yVelocity);
+        newX = platformCorrection.x;
+        newY = platformCorrection.y;
+        if (platformCorrection.landed) {
+            yVelocity = 0;
+            canJump = true;
+            hasDoubleJumped = false;
+            landedOnPlatform = true;
+        } else if (platformCorrection.hitHead) {
+            yVelocity = 0;
+        }
+
         // Enemy movement and simple collision
         for (EnemyEntity enemy : enemies) {
             if (enemy.hasPath()) {
@@ -639,6 +717,9 @@ public class GamePanel extends JPanel implements KeyListener {
                 }
                 // slight upward knock to visually separate from the enemy
                 yVelocity = JUMP_FORCE / 2;
+                platformCorrection = pushPlayerOutOfPlatforms(newX, newY, yVelocity);
+                newX = platformCorrection.x;
+                newY = platformCorrection.y;
                 // give short invulnerability after knockback
                 respawnProtection = 30;
             }
@@ -737,6 +818,16 @@ public class GamePanel extends JPanel implements KeyListener {
             // Room changed; preserve the position and physics state that the new room load established.
             newY = player.getYPos();
             yVelocity = player.getYVelocity();
+            platformCorrection = pushPlayerOutOfPlatforms(newX, newY, yVelocity);
+            newX = platformCorrection.x;
+            newY = platformCorrection.y;
+            if (platformCorrection.landed) {
+                yVelocity = 0;
+                canJump = true;
+                hasDoubleJumped = false;
+            } else if (platformCorrection.hitHead) {
+                yVelocity = 0;
+            }
         }
 
         // Bounds checking (horizontal)
@@ -746,6 +837,19 @@ public class GamePanel extends JPanel implements KeyListener {
         // Prevent going above screen
         newY = Math.max(0, newY);
         // keeps the player from going above the top of the screen
+
+        platformCorrection = pushPlayerOutOfPlatforms(newX, newY, yVelocity);
+        newX = platformCorrection.x;
+        newY = platformCorrection.y;
+        if (platformCorrection.landed) {
+            yVelocity = 0;
+            canJump = true;
+            hasDoubleJumped = false;
+        } else if (platformCorrection.hitHead) {
+            yVelocity = 0;
+        }
+        newX = Math.max(0, Math.min(newX, getWidth() - playerWidth));
+        newY = Math.max(0, newY);
 
         player.setXPos(newX);
         // saves the new x position into the player object
