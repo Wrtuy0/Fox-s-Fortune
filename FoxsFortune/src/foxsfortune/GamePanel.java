@@ -215,26 +215,12 @@ public class GamePanel extends JPanel implements KeyListener {
             
             //double jump spawn
             addDoubleJumpItem(100, 100);
-
-        });
-    }
-
-    private void initializeRoom3(String backgroundResource, int playerSpawnX, int playerSpawnY) {
-        registerRoom(3, backgroundResource, playerSpawnX, playerSpawnY, 2, 0, () -> {
-            addPlatform(0, 780, 1000, 20);       // bottom floor
-            addPlatform(120, 690, 180, 14);      // lower mid ledge
-            addPlatform(340, 610, 160, 14);      // upper mid ledge
-            addPlatform(560, 520, 180, 14);      // higher ledge
-            addPlatform(780, 430, 160, 14);      // top-right ledge
-            addPlatform(860, 350, 90, 14);       // small top platform
-            addPlatform(0, 300, 140, 14);        // left upper platform
         });
     }
 
     private void initializeRooms() {
         initializeRoom1("/foxsfortune/images/backgrounds/Room1Final.png", 140, 778 - playerHeight);
         initializeRoom2("/foxsfortune/images/backgrounds/Room2Final.png", 20, 447 - playerHeight);
-        initializeRoom3("/foxsfortune/images/backgrounds/Room3Final.png", 20, 447 - playerHeight);
     }
 
     private void startInRoom(int roomId) {
