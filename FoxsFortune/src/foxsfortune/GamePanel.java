@@ -2,9 +2,12 @@ package foxsfortune;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.image.BufferedImage;
@@ -53,6 +56,8 @@ public class GamePanel extends JPanel implements KeyListener {
     private int currentRoom = 0; // current room ID for room switching
     private boolean roomSwitchingEnabled = false; // prevent room changes until startup completes
     private final Map<Integer, RoomDefinition> roomDefinitions = new HashMap<>();
+    private boolean gameStarted = false; // title screen stays active until the player starts the game
+    private int titleAnimationTick = 0; // small animation counter for the title screen
     private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
     private int hurtCooldown = 0; // prevents repeated damage in the same contact
     private int respawnProtection = 0; // temporary invulnerability after respawn
@@ -580,6 +585,11 @@ public class GamePanel extends JPanel implements KeyListener {
     }
 
     private void update() {
+        if (!gameStarted) {
+            titleAnimationTick++;
+            return;
+        }
+
         // this method updates the player position every frame
         // Handle player movement based on keys pressed
         int newX = player.getXPos();
@@ -908,6 +918,11 @@ public class GamePanel extends JPanel implements KeyListener {
         Graphics2D g2d = (Graphics2D) g;
         // changes Graphics into Graphics2D so drawing is easier
 
+        if (!gameStarted) {
+            drawTitleScreen(g2d);
+            return;
+        }
+
         // Render background image if available
         if (backgroundImage != null) {
             g2d.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), null);
@@ -992,6 +1007,51 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.drawString("Press R to respawn", getWidth() / 2 - 70, getHeight() / 2 + 20);
         }
 
+    }
+
+    private void drawTitleScreen(Graphics2D g2d) {
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        if (backgroundImage != null) {
+            g2d.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), null);
+        } else {
+            g2d.setColor(new Color(18, 28, 35));
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+        }
+
+        g2d.setColor(new Color(0, 0, 0, 165));
+        g2d.fillRect(0, 0, getWidth(), getHeight());
+
+        int centerX = getWidth() / 2;
+        int titleY = 250;
+        Font titleFont = new Font("Serif", Font.BOLD, 82);
+        Font promptFont = new Font("SansSerif", Font.BOLD, 28);
+        Font smallFont = new Font("SansSerif", Font.PLAIN, 20);
+
+        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX + 4, titleY + 4, new Color(0, 0, 0, 150));
+        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX, titleY, new Color(255, 178, 66));
+
+        int foxY = 340 + (int) Math.round(Math.sin(titleAnimationTick / 20.0) * 8);
+        if (image != null) {
+            g2d.drawImage(image, centerX - playerWidth, foxY, playerWidth * 2, playerHeight * 2, null);
+        } else {
+            g2d.setColor(Color.ORANGE);
+            g2d.fillRect(centerX - PLAYER_SIZE, foxY, PLAYER_SIZE * 2, PLAYER_SIZE * 2);
+        }
+
+        drawCenteredText(g2d, "Collect treasure. Dodge danger. Find your way forward.", smallFont, centerX, 520, Color.WHITE);
+
+        if ((titleAnimationTick / 30) % 2 == 0) {
+            drawCenteredText(g2d, "Press Enter or Space", promptFont, centerX, 605, new Color(255, 241, 184));
+        }
+    }
+
+    private void drawCenteredText(Graphics2D g2d, String text, Font font, int centerX, int baselineY, Color color) {
+        g2d.setFont(font);
+        FontMetrics metrics = g2d.getFontMetrics();
+        int textX = centerX - metrics.stringWidth(text) / 2;
+        g2d.setColor(color);
+        g2d.drawString(text, textX, baselineY);
     }
 
     private void addPlatform(int x, int y, int width, int height) {
@@ -1149,6 +1209,15 @@ public class GamePanel extends JPanel implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent e) {
+        if (!gameStarted) {
+            if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_SPACE) {
+                gameStarted = true;
+                keysPressed.clear();
+                requestFocusInWindow();
+            }
+            return;
+        }
+
         if (!isAlive && e.getKeyCode() == KeyEvent.VK_R) {
             respawnPlayerAtCheckpoint();
             return;
