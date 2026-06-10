@@ -7,9 +7,12 @@ import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.net.URL;
@@ -58,6 +61,12 @@ public class GamePanel extends JPanel implements KeyListener {
     private final Map<Integer, RoomDefinition> roomDefinitions = new HashMap<>();
     private boolean gameStarted = false; // title screen stays active until the player starts the game
     private int titleAnimationTick = 0; // small animation counter for the title screen
+    private TitleMenuState titleMenuState = TitleMenuState.MAIN;
+    private final Rectangle playButtonBounds = new Rectangle();
+    private final Rectangle settingsButtonBounds = new Rectangle();
+    private final Rectangle creditsButtonBounds = new Rectangle();
+    private final Rectangle backButtonBounds = new Rectangle();
+    private String hoveredTitleButton = "";
     private int playerHealth = MAX_HEALTH; // player health for simple enemy interaction
     private int hurtCooldown = 0; // prevents repeated damage in the same contact
     private int respawnProtection = 0; // temporary invulnerability after respawn
@@ -96,6 +105,12 @@ public class GamePanel extends JPanel implements KeyListener {
         KAMIKAZI
     }
 
+    private enum TitleMenuState {
+        MAIN,
+        SETTINGS,
+        CREDITS
+    }
+
     public GamePanel() {//constructor 
         setBackground(Color.BLACK);
         // makes the background black
@@ -104,6 +119,25 @@ public class GamePanel extends JPanel implements KeyListener {
         // lets the panel receive keyboard input and avoids focus traversal swallowing keys
         addKeyListener(this);
         // adds this class as the key listener
+        MouseAdapter titleMouseHandler = new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                updateHoveredTitleButton(e.getPoint());
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                hoveredTitleButton = "";
+                repaint();
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+                handleTitleMousePressed(e.getPoint());
+            }
+        };
+        addMouseListener(titleMouseHandler);
+        addMouseMotionListener(titleMouseHandler);
         requestFocusInWindow();
         // request focus so key events are delivered
 
@@ -1011,27 +1045,37 @@ public class GamePanel extends JPanel implements KeyListener {
 
     private void drawTitleScreen(Graphics2D g2d) {
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        layoutTitleButtons();
 
         if (backgroundImage != null) {
             g2d.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), null);
         } else {
-            g2d.setColor(new Color(18, 28, 35));
+            g2d.setColor(new Color(22, 32, 38));
             g2d.fillRect(0, 0, getWidth(), getHeight());
         }
 
-        g2d.setColor(new Color(0, 0, 0, 165));
+        g2d.setColor(new Color(0, 0, 0, 145));
         g2d.fillRect(0, 0, getWidth(), getHeight());
 
+        for (int i = 0; i < 6; i++) {
+            int x = 120 + i * 150;
+            int y = 95 + (int) Math.round(Math.sin((titleAnimationTick + i * 18) / 28.0) * 18);
+            g2d.setColor(new Color(255, 204, 93, 35));
+            g2d.fillOval(x, y, 36, 36);
+        }
+
         int centerX = getWidth() / 2;
-        int titleY = 250;
-        Font titleFont = new Font("Serif", Font.BOLD, 82);
-        Font promptFont = new Font("SansSerif", Font.BOLD, 28);
+        int titleY = 190;
+        Font titleFont = new Font("Serif", Font.BOLD, 88);
         Font smallFont = new Font("SansSerif", Font.PLAIN, 20);
 
-        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX + 4, titleY + 4, new Color(0, 0, 0, 150));
-        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX, titleY, new Color(255, 178, 66));
+        g2d.setColor(new Color(255, 168, 48, 45));
+        g2d.fillOval(centerX - 245, 70, 490, 210);
+        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX + 5, titleY + 5, new Color(0, 0, 0, 155));
+        drawCenteredText(g2d, "Fox's Fortune", titleFont, centerX, titleY, new Color(255, 190, 75));
+        drawCenteredText(g2d, "A cozy little platform adventure", smallFont, centerX, 232, new Color(255, 244, 214));
 
-        int foxY = 340 + (int) Math.round(Math.sin(titleAnimationTick / 20.0) * 8);
+        int foxY = 300 + (int) Math.round(Math.sin(titleAnimationTick / 20.0) * 8);
         if (image != null) {
             g2d.drawImage(image, centerX - playerWidth, foxY, playerWidth * 2, playerHeight * 2, null);
         } else {
@@ -1039,10 +1083,75 @@ public class GamePanel extends JPanel implements KeyListener {
             g2d.fillRect(centerX - PLAYER_SIZE, foxY, PLAYER_SIZE * 2, PLAYER_SIZE * 2);
         }
 
-        drawCenteredText(g2d, "Collect treasure. Dodge danger. Find your way forward.", smallFont, centerX, 520, Color.WHITE);
+        if (titleMenuState == TitleMenuState.MAIN) {
+            drawMenuButton(g2d, playButtonBounds, "Play", "play", true);
+            drawMenuButton(g2d, settingsButtonBounds, "Settings", "settings", false);
+            drawMenuButton(g2d, creditsButtonBounds, "Credits", "credits", false);
+        } else if (titleMenuState == TitleMenuState.SETTINGS) {
+            drawTitlePanel(g2d, "Settings", new String[]{
+                "Window size: 1000 x 900",
+                "Move: A / D or Arrow Keys",
+                "Jump: W or Up",
+                "Attack: C"
+            });
+            drawMenuButton(g2d, backButtonBounds, "Back", "back", false);
+        } else if (titleMenuState == TitleMenuState.CREDITS) {
+            drawTitlePanel(g2d, "Credits", new String[]{
+                "Created by Reese Sanders, Logan Saywich, and Aws Tariq",
+                "Thanks for playing Fox's Fortune"
+            });
+            drawMenuButton(g2d, backButtonBounds, "Back", "back", false);
+        }
+    }
 
-        if ((titleAnimationTick / 30) % 2 == 0) {
-            drawCenteredText(g2d, "Press Enter or Space", promptFont, centerX, 605, new Color(255, 241, 184));
+    private void layoutTitleButtons() {
+        int centerX = getWidth() / 2;
+        int buttonWidth = 270;
+        int buttonHeight = 58;
+        int startY = 535;
+        int gap = 20;
+
+        playButtonBounds.setBounds(centerX - buttonWidth / 2, startY, buttonWidth, buttonHeight);
+        settingsButtonBounds.setBounds(centerX - buttonWidth / 2, startY + buttonHeight + gap, buttonWidth, buttonHeight);
+        creditsButtonBounds.setBounds(centerX - buttonWidth / 2, startY + (buttonHeight + gap) * 2, buttonWidth, buttonHeight);
+        backButtonBounds.setBounds(centerX - buttonWidth / 2, 690, buttonWidth, buttonHeight);
+    }
+
+    private void drawMenuButton(Graphics2D g2d, Rectangle bounds, String label, String key, boolean primary) {
+        boolean hovered = key.equals(hoveredTitleButton);
+        Color fill = primary ? new Color(255, 181, 68) : new Color(38, 55, 62, 225);
+        Color hoverFill = primary ? new Color(255, 205, 105) : new Color(62, 82, 88, 235);
+        Color border = primary ? new Color(255, 238, 176) : new Color(255, 209, 118);
+
+        g2d.setColor(new Color(0, 0, 0, 120));
+        g2d.fillRoundRect(bounds.x + 5, bounds.y + 6, bounds.width, bounds.height, 20, 20);
+        g2d.setColor(hovered ? hoverFill : fill);
+        g2d.fillRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 20, 20);
+        g2d.setColor(border);
+        g2d.drawRoundRect(bounds.x, bounds.y, bounds.width, bounds.height, 20, 20);
+
+        Font buttonFont = new Font("SansSerif", Font.BOLD, hovered ? 28 : 26);
+        drawCenteredText(g2d, label, buttonFont, bounds.x + bounds.width / 2, bounds.y + 38, primary ? new Color(60, 34, 12) : Color.WHITE);
+    }
+
+    private void drawTitlePanel(Graphics2D g2d, String heading, String[] lines) {
+        int panelX = getWidth() / 2 - 330;
+        int panelY = 420;
+        int panelW = 660;
+        int panelH = 230;
+
+        g2d.setColor(new Color(0, 0, 0, 145));
+        g2d.fillRoundRect(panelX + 6, panelY + 8, panelW, panelH, 24, 24);
+        g2d.setColor(new Color(31, 45, 50, 230));
+        g2d.fillRoundRect(panelX, panelY, panelW, panelH, 24, 24);
+        g2d.setColor(new Color(255, 190, 75));
+        g2d.drawRoundRect(panelX, panelY, panelW, panelH, 24, 24);
+
+        drawCenteredText(g2d, heading, new Font("SansSerif", Font.BOLD, 34), getWidth() / 2, panelY + 52, new Color(255, 221, 145));
+
+        Font lineFont = new Font("SansSerif", Font.PLAIN, 22);
+        for (int i = 0; i < lines.length; i++) {
+            drawCenteredText(g2d, lines[i], lineFont, getWidth() / 2, panelY + 96 + i * 32, Color.WHITE);
         }
     }
 
@@ -1207,13 +1316,77 @@ public class GamePanel extends JPanel implements KeyListener {
         addEnemy(220, 720, ENEMY_SIZE, ENEMY_SIZE, 200, 370, 2);
     }
 
+    private void startGameFromTitle() {
+        gameStarted = true;
+        titleMenuState = TitleMenuState.MAIN;
+        hoveredTitleButton = "";
+        keysPressed.clear();
+        requestFocusInWindow();
+    }
+
+    private void updateHoveredTitleButton(Point point) {
+        if (gameStarted) {
+            return;
+        }
+
+        String hoveredButton = getTitleButtonAt(point);
+        if (!hoveredButton.equals(hoveredTitleButton)) {
+            hoveredTitleButton = hoveredButton;
+            repaint();
+        }
+    }
+
+    private void handleTitleMousePressed(Point point) {
+        if (gameStarted) {
+            return;
+        }
+
+        String clickedButton = getTitleButtonAt(point);
+        if ("play".equals(clickedButton)) {
+            startGameFromTitle();
+        } else if ("settings".equals(clickedButton)) {
+            titleMenuState = TitleMenuState.SETTINGS;
+            hoveredTitleButton = "";
+            repaint();
+        } else if ("credits".equals(clickedButton)) {
+            titleMenuState = TitleMenuState.CREDITS;
+            hoveredTitleButton = "";
+            repaint();
+        } else if ("back".equals(clickedButton)) {
+            titleMenuState = TitleMenuState.MAIN;
+            hoveredTitleButton = "";
+            repaint();
+        }
+    }
+
+    private String getTitleButtonAt(Point point) {
+        layoutTitleButtons();
+        if (titleMenuState == TitleMenuState.MAIN) {
+            if (playButtonBounds.contains(point)) {
+                return "play";
+            }
+            if (settingsButtonBounds.contains(point)) {
+                return "settings";
+            }
+            if (creditsButtonBounds.contains(point)) {
+                return "credits";
+            }
+        } else if (backButtonBounds.contains(point)) {
+            return "back";
+        }
+        return "";
+    }
+
     @Override
     public void keyPressed(KeyEvent e) {
         if (!gameStarted) {
-            if (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_SPACE) {
-                gameStarted = true;
-                keysPressed.clear();
-                requestFocusInWindow();
+            if (titleMenuState == TitleMenuState.MAIN
+                    && (e.getKeyCode() == KeyEvent.VK_ENTER || e.getKeyCode() == KeyEvent.VK_SPACE)) {
+                startGameFromTitle();
+            } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+                titleMenuState = TitleMenuState.MAIN;
+                hoveredTitleButton = "";
+                repaint();
             }
             return;
         }
