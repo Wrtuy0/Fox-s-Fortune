@@ -238,7 +238,7 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(890, 343, 93, 16);      // mid sky box
 
             addEnemy(40, 447 - ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE, 0, 326, 1);
-             
+            addEnemy(640, 445 - ENEMY_SIZE, ENEMY_SIZE, ENEMY_SIZE,600, 1000, 1);
         });
     }
 
