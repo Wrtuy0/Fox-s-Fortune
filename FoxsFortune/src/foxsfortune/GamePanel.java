@@ -275,7 +275,10 @@ public class GamePanel extends JPanel implements KeyListener {
             addPlatform(120, 844, 880, 10);    // lower left red floor
             
             //double jump spawn
-            addDoubleJumpItem(100, 100);
+            if(doubleJumpEnabled == false){
+                addDoubleJumpItem(100, 100);
+            }
+            
         });
     }
 
