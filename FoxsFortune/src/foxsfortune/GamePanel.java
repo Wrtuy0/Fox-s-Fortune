@@ -97,6 +97,8 @@ public class GamePanel extends JPanel implements KeyListener {
     private int walkAnimationTick = 0;
     private int walkAnimationFrame = 0;
     private final int WALK_ANIMATION_FRAME_DELAY = 10;
+    private PlayerAnimationState playerAnimationState = PlayerAnimationState.IDLE;
+    private boolean jumpAnimationActive = false;
     private BufferedImage backgroundImage;
     private BufferedImage snailImage;
 
@@ -111,6 +113,12 @@ public class GamePanel extends JPanel implements KeyListener {
         MAIN,
         SETTINGS,
         CREDITS
+    }
+
+    private enum PlayerAnimationState {
+        IDLE,
+        WALKING,
+        JUMPING
     }
 
     public GamePanel() {//constructor 
@@ -367,6 +375,7 @@ public class GamePanel extends JPanel implements KeyListener {
             player.setYVelocity(0);
             knockbackVelocityX = 0;
             player.setMoving(false);
+            resetPlayerAnimation();
         }
     }
 
@@ -598,6 +607,41 @@ public class GamePanel extends JPanel implements KeyListener {
         return new CollisionCorrection(correctedX, correctedY, landed, hitHead);
     }
 
+    private void resetPlayerAnimation() {
+        playerAnimationState = PlayerAnimationState.IDLE;
+        jumpAnimationActive = false;
+        walkAnimationTick = 0;
+        walkAnimationFrame = 0;
+    }
+
+    private void updatePlayerAnimationState(double yVelocity) {
+        if (!isAlive || yVelocity >= -0.1) {
+            jumpAnimationActive = false;
+        }
+
+        PlayerAnimationState nextState;
+        if (jumpAnimationActive) {
+            nextState = PlayerAnimationState.JUMPING;
+        } else if (isAlive && xVelocity != 0 && canJump) {
+            nextState = PlayerAnimationState.WALKING;
+        } else {
+            nextState = PlayerAnimationState.IDLE;
+        }
+
+        if (nextState != PlayerAnimationState.WALKING) {
+            walkAnimationTick = 0;
+            walkAnimationFrame = 0;
+        } else {
+            walkAnimationTick++;
+            if (walkAnimationTick >= WALK_ANIMATION_FRAME_DELAY) {
+                walkAnimationTick = 0;
+                walkAnimationFrame = 1 - walkAnimationFrame;
+            }
+        }
+
+        playerAnimationState = nextState;
+    }
+
     private static class CollisionCorrection {
 
         final int x;
@@ -734,9 +778,11 @@ public class GamePanel extends JPanel implements KeyListener {
                 yVelocity = JUMP_FORCE;
                 canJump = false;
                 hasDoubleJumped = false;
+                jumpAnimationActive = true;
             } else if (doubleJumpEnabled && !hasDoubleJumped) {
                 yVelocity = JUMP_FORCE;
                 hasDoubleJumped = true;
+                jumpAnimationActive = true;
             }
         }
         jumpKeyPreviouslyPressed = jumpPressed;
@@ -963,19 +1009,8 @@ public class GamePanel extends JPanel implements KeyListener {
         // saves the updated y velocity
 
         // Update moving state
-        player.setMoving(!keysPressed.isEmpty() || knockbackVelocityX != 0);
-        // if any key is pressed, the player is counted as moving
-        boolean playerIsAirborne = !canJump || Math.abs(player.getYVelocity()) > 0.1;
-        if (isAlive && xVelocity != 0 && !playerIsAirborne) {
-            walkAnimationTick++;
-            if (walkAnimationTick >= WALK_ANIMATION_FRAME_DELAY) {
-                walkAnimationTick = 0;
-                walkAnimationFrame = 1 - walkAnimationFrame;
-            }
-        } else {
-            walkAnimationTick = 0;
-            walkAnimationFrame = 0;
-        }
+        player.setMoving(xVelocity != 0 || knockbackVelocityX != 0);
+        updatePlayerAnimationState(player.getYVelocity());
     }
 
     @Override
@@ -1055,11 +1090,20 @@ public class GamePanel extends JPanel implements KeyListener {
         if (player != null) {
             // only draw the player if the player exists
             BufferedImage currentPlayerImage = image;
-            boolean playerIsAirborne = !canJump || Math.abs(player.getYVelocity()) > 0.1;
-            if (playerIsAirborne && jumpImage != null) {
-                currentPlayerImage = jumpImage;
-            } else if (xVelocity != 0 && getWalkingFrame() != null) {
-                currentPlayerImage = getWalkingFrame();
+            switch (playerAnimationState) {
+                case JUMPING -> {
+                    if (jumpImage != null) {
+                        currentPlayerImage = jumpImage;
+                    }
+                }
+                case WALKING -> {
+                    if (getWalkingFrame() != null) {
+                        currentPlayerImage = getWalkingFrame();
+                    }
+                }
+                default -> {
+                    currentPlayerImage = image;
+                }
             }
 
             if (currentPlayerImage != null) {
@@ -1299,6 +1343,7 @@ public class GamePanel extends JPanel implements KeyListener {
             player.setYVelocity(0);
             knockbackVelocityX = 0;
             player.setMoving(false);
+            resetPlayerAnimation();
         }
     }
 
@@ -1310,6 +1355,7 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setYVelocity(0);
         knockbackVelocityX = 0;
         player.setMoving(false);
+        resetPlayerAnimation();
         playerHealth = MAX_HEALTH;
         // give a longer safety window after respawn to avoid instant damage
         hurtCooldown = 120;
@@ -1354,6 +1400,7 @@ public class GamePanel extends JPanel implements KeyListener {
         player.setYVelocity(0);
         knockbackVelocityX = 0;
         player.setMoving(false);
+        resetPlayerAnimation();
 
         collectibles.clear();
         enemies.clear();
@@ -1371,6 +1418,7 @@ public class GamePanel extends JPanel implements KeyListener {
         titleMenuState = TitleMenuState.MAIN;
         hoveredTitleButton = "";
         keysPressed.clear();
+        resetPlayerAnimation();
         requestFocusInWindow();
     }
 
