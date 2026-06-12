@@ -93,10 +93,12 @@ public class GamePanel extends JPanel implements KeyListener {
     // animations
     private BufferedImage image;
     private final BufferedImage[] walkingImages = new BufferedImage[2];
+    private BufferedImage jumpImage;
     private int walkAnimationTick = 0;
     private int walkAnimationFrame = 0;
     private final int WALK_ANIMATION_FRAME_DELAY = 10;
     private BufferedImage backgroundImage;
+    private BufferedImage snailImage;
 
     public enum EnemyType {
         BASIC,
@@ -159,6 +161,8 @@ public class GamePanel extends JPanel implements KeyListener {
         image = loadPlayerModel("BiggerFoxModel.png");
         walkingImages[0] = loadPlayerModel("FoxWalkingRight1.png");
         walkingImages[1] = loadPlayerModel("FoxWalkingRight2.png");
+        jumpImage = loadPlayerModel("FoxJumpRight.png");
+        snailImage = loadEnemyModel("SnailModel.png");
         BufferedImage sizeImage = image != null ? image : getWalkingFrame();
         if (sizeImage != null) {
             playerWidth = sizeImage.getWidth();
@@ -203,6 +207,32 @@ public class GamePanel extends JPanel implements KeyListener {
         return walkingImages[walkAnimationFrame] != null
                 ? walkingImages[walkAnimationFrame]
                 : walkingImages[1 - walkAnimationFrame];
+    }
+
+    private BufferedImage loadEnemyModel(String fileName) {
+        String resourcePath = "/foxsfortune/images/enemies/" + fileName;
+        URL modelURL = FoxsFortune.class.getResource(resourcePath);
+        if (modelURL == null) {
+            try {
+                java.io.File fallbackFile = new java.io.File("FoxsFortune/src/foxsfortune/images/enemies/" + fileName);
+                if (fallbackFile.exists()) {
+                    modelURL = fallbackFile.toURI().toURL();
+                }
+            } catch (java.net.MalformedURLException e) {
+                System.err.println("Error resolving fallback enemy model path: " + e);
+            }
+        }
+
+        if (modelURL != null) {
+            try {
+                return ImageIO.read(modelURL);
+            } catch (IOException e) {
+                System.err.println("Error reading enemy model image: " + e);
+            }
+        } else {
+            System.err.println("Warning: " + fileName + " not found in classpath resources.");
+        }
+        return null;
     }
 
     private void initializeRoom1(String backgroundResource, int playerSpawnX, int playerSpawnY) {
@@ -935,7 +965,8 @@ public class GamePanel extends JPanel implements KeyListener {
         // Update moving state
         player.setMoving(!keysPressed.isEmpty() || knockbackVelocityX != 0);
         // if any key is pressed, the player is counted as moving
-        if (isAlive && xVelocity != 0) {
+        boolean playerIsAirborne = !canJump || Math.abs(player.getYVelocity()) > 0.1;
+        if (isAlive && xVelocity != 0 && !playerIsAirborne) {
             walkAnimationTick++;
             if (walkAnimationTick >= WALK_ANIMATION_FRAME_DELAY) {
                 walkAnimationTick = 0;
@@ -996,7 +1027,20 @@ public class GamePanel extends JPanel implements KeyListener {
         // Render enemies
         g2d.setColor(Color.RED);
         for (EnemyEntity enemy : enemies) {
-            g2d.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            boolean usesSnailModel = enemy.enemyType == EnemyType.BASIC || enemy.enemyType == EnemyType.GROUND;
+            if (usesSnailModel && snailImage != null) {
+                if (enemy.dx >= 0) {
+                    g2d.drawImage(snailImage,
+                            enemy.x + enemy.width, enemy.y,
+                            enemy.x, enemy.y + enemy.height,
+                            0, 0, snailImage.getWidth(), snailImage.getHeight(),
+                            null);
+                } else {
+                    g2d.drawImage(snailImage, enemy.x, enemy.y, enemy.width, enemy.height, null);
+                }
+            } else {
+                g2d.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+            }
         }
         // draws simple patrolling enemies
 
@@ -1011,7 +1055,10 @@ public class GamePanel extends JPanel implements KeyListener {
         if (player != null) {
             // only draw the player if the player exists
             BufferedImage currentPlayerImage = image;
-            if (xVelocity != 0 && getWalkingFrame() != null) {
+            boolean playerIsAirborne = !canJump || Math.abs(player.getYVelocity()) > 0.1;
+            if (playerIsAirborne && jumpImage != null) {
+                currentPlayerImage = jumpImage;
+            } else if (xVelocity != 0 && getWalkingFrame() != null) {
                 currentPlayerImage = getWalkingFrame();
             }
 
